@@ -7,6 +7,8 @@
 #include <string.h>
 #include <math.h>
 
+#include "shim.h"
+
 static bool str_hex_to_uint64(const char *input, uint64_t *result)
 {
 	char current_char;
@@ -29,7 +31,7 @@ static bool str_hex_to_uint64(const char *input, uint64_t *result)
 		if (current_char == 'x' || current_char == 'X')
 			break;
 
-		if (!ishexnumber(current_char))
+		if (!__ishexnumber(current_char))
 			return false;
 
 		exp = (uint64_t) pow(16, counter);

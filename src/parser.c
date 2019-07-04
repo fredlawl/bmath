@@ -6,6 +6,7 @@
 
 #include "parser.h"
 #include "conversions.h"
+#include "shim.h"
 
 #define __general_error(fmt, arg...)                    \
 do {                                                    \
@@ -123,7 +124,7 @@ static bool __is_allowed_character(char character)
 		|| __is_operator(character)
 		|| __is_x(character)
 		|| isdigit(character)
-		|| ishexnumber(character)
+		|| __ishexnumber(character)
 		|| isspace(character);
 }
 
@@ -188,7 +189,7 @@ static void __lexer_parse_hex(struct lexer *lexer, struct token *token)
 	line_reader = lexer->line + lexer->current_column;
 
 	while ((current_char = *line_reader++) != '\0' &&
-		ishexnumber(current_char)) {
+		__ishexnumber(current_char)) {
 		lexer->current_column++;
 	}
 
