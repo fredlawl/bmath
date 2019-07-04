@@ -52,7 +52,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 	struct arguments *arguments = (struct arguments *) state->input;
 
 	switch (key) {
-		case 'u': arguments->should_uppercase_hex = true;
+		case 'u': arguments->should_uppercase_hex = true; break;
 		case ARGP_KEY_ARG:
 			if (state->arg_num > 1)
 				argp_usage(state);
