@@ -5,19 +5,18 @@
 
 #include "argp.h"
 
-const char *argp_program_version = "0.0.1";
+const char *argp_program_version = "0.0.2";
 const char *argp_program_bug_address =
-	"Frederick Lawler <fred@fredlawlcom>";
+	"Frederick Lawler <fred@fredlawl.com>";
 
-static char args_doc[] =
-	"\"[EXPR]\"";
+static char args_doc[] = "";
 
 static char doc[] =
 	"Write out a term or expression to get a desired result."
 	" Only POSITIVE numbers are allowed."
-	"\n\nExample:"
-	"\n\t./bmath \"1 << 1\""
-	"\n\t./bmath \"0x001\""
+	"\n\nDetached Example:"
+	"\n\t./bmath -d \"1 << 1\""
+	"\n\t./bmath -d \"0x001\""
         "\n\nLanguage Specification:"
 	"\n\texpr  = expr, op, term"
 	"\n\t      | term ;"
@@ -38,12 +37,14 @@ static char doc[] =
 
 struct arguments
 {
-	char *args[1];
+	char *args[0];
+	char *detached_expr;
 	bool should_uppercase_hex;
 };
 
 static struct argp_option options[] = {
-	{"uppercase", 'u', 0, 0, "Uppercase hex output.", 0},
+	{"uppercase", 'u', 0, 0, "Uppercase hex output", 0},
+	{"detached", 'd', "EXPR", 0, "Execute single expression", 0},
 	{0}
 };
 
@@ -53,16 +54,18 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 
 	switch (key) {
 		case 'u': arguments->should_uppercase_hex = true; break;
+		case 'd': arguments->detached_expr = arg; break;
 		case ARGP_KEY_ARG:
-			if (state->arg_num > 1)
+			if (state->arg_num > 0)
 				argp_usage(state);
 
 			arguments->args[state->arg_num] = arg;
 
 			break;
 		case ARGP_KEY_END:
-			if (state->arg_num < 1)
+			if (state->arg_num > 0)
 				argp_usage(state);
+
 			break;
 		default: return ARGP_ERR_UNKNOWN;
 	}

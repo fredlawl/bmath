@@ -7,17 +7,13 @@
 #include "parser.h"
 #include "conversions.h"
 #include "shim.h"
+#include "util.h"
 
 #define __general_error(fmt, arg...)                    \
 do {                                                    \
 	fprintf(stderr, "[ERROR]: " fmt, ##arg);        \
 	exit(EXIT_FAILURE);                             \
 } while(0)
-
-#define __repeat_character(fp, n, c)                    \
-do {                                                    \
-	for (int i = 0; i < n; i++) fputc(c, fp);       \
-} while (0)
 
 #define __lexical_error(l, fmt, arg...)                                                 \
 do {                                                                                    \

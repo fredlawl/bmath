@@ -1,15 +1,15 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 
 #include "argp_config.h"
 #include "conversions.h"
 #include "parser.h"
+#include "util.h"
 
-#define __repeat_character(fp, n, c)                    \
-do {                                                    \
-	for (int i = 0; i < n; i++) fputc(c, fp);       \
-} while (0)
+static bool upercaseHex = false;
 
 static void print_number(uint64_t num, bool uppercase_hex)
 {
@@ -55,24 +55,53 @@ static void print_number(uint64_t num, bool uppercase_hex)
 	}
 }
 
+int evaluate(const char* input)
+{
+	uint64_t output = 0;
+	int result = parse(input, &output);
+	if (result <= 0) {
+		// notify error...
+		return EXIT_FAILURE;
+	}
+
+	print_number(output, upercaseHex);
+	return EXIT_SUCCESS;
+}
+
 int main(int argc, char *argv[])
 {
 	struct arguments arguments;
 	char *input;
 
+	arguments.detached_expr = NULL;
 	arguments.should_uppercase_hex = false;
 
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
-	input = arguments.args[0];
+	upercaseHex = arguments.should_uppercase_hex;
 
-	uint64_t output = 0;
-	int result = parse(input, &output);
-	if (result <= 0) {
-		// notify error...
+	if (arguments.detached_expr) {
+		return evaluate(arguments.detached_expr);
 	}
 
-	print_number(output, arguments.should_uppercase_hex);
+	while (true) {
+		input = readline("expr> ");
+
+		if (!input)
+			break;
+
+		if (strcasecmp(input, "exit") == 0 ||
+		    strcasecmp(input,"quit") == 0) {
+			break;
+		}
+
+		add_history(input);
+		evaluate(input);
+
+		free(input);
+	}
+
+	free(input);
 
 	return EXIT_SUCCESS;
 }

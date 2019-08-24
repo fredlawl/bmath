@@ -14,10 +14,24 @@ Run the following commands:
 1. `make`
 1. `cp ./bin/bmath /usr/local/bin`
 
-## Usage example
+## Usage
+
+```
+Usage: bmath [-u?V] [-d EXPR] [--detached=EXPR] [--uppercase] [--help]
+            [--usage] [--version]
+
+```
+
+Run `./bmath` to run the program in interactive mode. To exit, use `ctrl + c`,
+or type in "quit" or "exit".
+
+### Example Expressions
+
+> **NOTE**: Bmath runs in interactive mode by default. The "-d" argument is
+used to run expressions one by one in non-interactive (detached) mode.
 
 ```shell
-$ ./bmath "1 << 6"
+$ ./bmath -d "1 << 6"
   Dec: 64
  Char: @
   Hex: 0x40
@@ -30,7 +44,7 @@ Hex64: 0x0000000000000040
 Also supports hex conversions:
 
 ```shell
-$ ./bmath "0x40"
+$ ./bmath -d "0x40"
   Dec: 64
  Char: @
   Hex: 0x40
@@ -41,7 +55,7 @@ Hex64: 0x0000000000000040
 ```
 
 ```shell
-$ ./bmath "0x1 | 0x2"
+$ ./bmath -d "0x1 | 0x2"
   Dec: 3
  Char: <special>
   Hex: 0x3
@@ -53,7 +67,7 @@ Hex64: 0x0000000000000003
 
 When a value is calculated greater than unsigned 16-bit integer:
 ```shell
-$ ./bmath "1 << 17"
+$ ./bmath -d "1 << 17"
   Dec: 131072
  Char: Exceeded
   Hex: 0x20000
