@@ -9,6 +9,19 @@ calculation exceeds that number.
 
 ## Install
 
+### MacOS
+
+Using homebrew, install the following libraries:
+1. `brew install argp-standlone`
+1. `brew install readline`
+1. (test suite only) `brew install criterion`
+
+### Linux
+
+1. (test suite only) [Install Criterion](https://criterion.readthedocs.io/en/master/setup.html)
+
+### Compile & Install
+
 Run the following commands:
 1. `cmake CMakeLists.txt`
 1. `make`
