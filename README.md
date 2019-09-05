@@ -9,20 +9,23 @@ calculation exceeds that number.
 
 ## Install
 
-### MacOS
+### Prerequisites
+
+#### MacOS
 
 Using homebrew, install the following libraries:
-1. `brew install argp-standlone`
+1. `brew install argp-standalone`
 1. `brew install readline`
+1. `brew install cmake`
 1. (test suite only) `brew install criterion`
 
-### Linux
+#### Linux
 
 1. (test suite only) [Install Criterion](https://criterion.readthedocs.io/en/master/setup.html)
 
 ### Compile & Install
 
-Run the following commands:
+Clone this repo, `cd` into the cloned directory, and then run the following commands:
 1. `cmake CMakeLists.txt`
 1. `make`
 1. `cp ./bin/bmath /usr/local/bin`
