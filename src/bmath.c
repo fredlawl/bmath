@@ -13,9 +13,6 @@ static bool upercaseHex = false;
 
 static void print_number(uint64_t num, bool uppercase_hex)
 {
-	char *hex = NULL;
-	size_t hex_len = 0;
-
 	printf("  Dec: %" PRIu64 "\n", num);
 
 	if (num <= CHAR_MAX) {
@@ -28,31 +25,29 @@ static void print_number(uint64_t num, bool uppercase_hex)
 		printf(" Char: Exceeded\n");
 	}
 
-	if ((hex_len = convert_uint64_to_hex(num, &hex, uppercase_hex)) > 0) {
-		printf("  Hex: 0x%s\n", hex);
+	printf("  Hex: 0x");
+	__print_hex(num, 0, uppercase_hex);
+	printf("\n");
 
-		if (num <= UINT16_MAX) {
-			printf("Hex16: 0x");
-			__repeat_character(stdout, (4 - (int) hex_len), '0');
-			printf("%s\n", hex);
-		} else {
-			printf("Hex16: Exceeded\n");
-		}
-
-		if (num <= UINT32_MAX) {
-			printf("Hex32: 0x");
-			__repeat_character(stdout, (8 - (int) hex_len), '0');
-			printf("%s\n", hex);
-		} else {
-			printf("Hex32: Exceeded\n");
-		}
-
-		printf("Hex64: 0x");
-		__repeat_character(stdout, (16 - (int) hex_len), '0');
-		printf("%s\n", hex);
-
-		free(hex);
+	if (num <= UINT16_MAX) {
+		printf("Hex16: 0x");
+		__print_hex(num, 4, uppercase_hex);
+		printf("\n");
+	} else {
+		printf("Hex16: Exceeded\n");
 	}
+
+	if (num <= UINT32_MAX) {
+		printf("Hex32: 0x");
+		__print_hex(num, 8, uppercase_hex);
+		printf("\n");
+	} else {
+		printf("Hex32: Exceeded\n");
+	}
+
+	printf("Hex64: 0x");
+	__print_hex(num, 16, uppercase_hex);
+	printf("\n");
 }
 
 int evaluate(const char* input)
