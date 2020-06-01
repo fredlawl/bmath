@@ -1,12 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(bmath)
 
-set(CMAKE_C_COMPILER gcc)
-set(CMAKE_CXX_COMPILER g++)
-set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wshadow -Wextra -Wvla -Wmissing-field-initializers")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
-set(LIBRARIES "readline")
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wshadow -Wextra -Wvla -Wmissing-field-initializers")
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     set(LIBRARIES ${LIBRARIES} "argp")
 else (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
@@ -15,9 +10,6 @@ endif()
 set(TEST_LIBRARIES ${LIBRARIES})
 set(SRC_FILES "")
 set(CMAKE_VERBOSE_MAKEFILE ON)
-
-include_directories("/usr/include" "/usr/local/include")
-link_directories("/usr/lib" "/usr/local/lib")
 
 find_path(CRITERION_INCLUDE_DIR NAMES criterion)
 find_library(CRITERION_LIBRARY NAMES criterion REQUIRED)
@@ -32,6 +24,18 @@ set(SRC_FILES ${SRC_FILES} src/parser.c)
 
 add_executable(${PROJECT_NAME} src/bmath.c ${SRC_FILES})
 target_link_libraries(${PROJECT_NAME} ${LIBRARIES})
+target_link_directories(${PROJECT_NAME} PUBLIC src)
+
+find_path(READLINE_INCLUDE_DIR NAMES readline.h HINTS /usr/include PATH_SUFFIXES readline)
+find_library(READLINE_LIBRARY NAMES readline HINTS /usr/lib)
+#message(${READLINE_INCLUDE_DIR} " " ${READLINE_LIBRARY})
+#if (READLINE_LIBRARY)
+#	target_link_directories(${PROJECT_NAME} PUBLIC ${READLINE_INCLUDE_DIR})
+#	target_link_libraries(${PROJECT_NAME} ${READLINE_LIBRARY})
+#else (READLINE_LIBRARY)
+#	message(ERROR "Unable to locate readline. Won't build.")
+#endif(READLINE_LIBRARY)
+
 
 if (CRITERION_LIBRARY)
 	set(SRC_FILES ${SRC_FILES} test/conversions.c test/parser.c)

@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
-#include <readline/readline.h>
-#include <readline/history.h>
+#include <stdbool.h>
+//#include <readline/readline.h>
+//#include <readline/history.h>
 
-#include "argp_config.h"
+//#include "argp_config.h"
 #include "conversions.h"
 #include "parser.h"
 #include "util.h"
@@ -15,7 +16,7 @@ static void print_number(uint64_t num, bool uppercase_hex)
 {
 	printf("  Dec: %" PRIu64 "\n", num);
 
-	if (num <= CHAR_MAX) {
+	if (num <= INT8_MAX) {
 		if (num <= 31) {
 			printf(" Char: <special>\n");
 		} else {
@@ -65,38 +66,44 @@ int evaluate(const char* input)
 
 int main(int argc, char *argv[])
 {
-	struct arguments arguments;
-	char *input;
+    upercaseHex = false;
+    if (argc <= 1) {
+        return EXIT_FAILURE;
+    }
 
-	arguments.detached_expr = NULL;
-	arguments.should_uppercase_hex = false;
+    return evaluate(argv[1]);
+//	struct arguments arguments;
+//	char *input;
+//
+//	arguments.detached_expr = NULL;
+//	arguments.should_uppercase_hex = false;
+//
+//	argp_parse(&argp, argc, argv, 0, 0, &arguments);
+//
+//	upercaseHex = arguments.should_uppercase_hex;
+//
+//	if (arguments.detached_expr) {
+//		return evaluate(arguments.detached_expr);
+//	}
 
-	argp_parse(&argp, argc, argv, 0, 0, &arguments);
+//	while (true) {
+//		input = readline("expr> ");
+//
+//		if (!input)
+//			break;
+//
+//		if (strcasecmp(input, "exit") == 0 ||
+//		    strcasecmp(input,"quit") == 0) {
+//			break;
+//		}
+//
+//		add_history(input);
+//		evaluate(input);
+//
+//		free(input);
+//	}
+//
+//	free(input);
 
-	upercaseHex = arguments.should_uppercase_hex;
-
-	if (arguments.detached_expr) {
-		return evaluate(arguments.detached_expr);
-	}
-
-	while (true) {
-		input = readline("expr> ");
-
-		if (!input)
-			break;
-
-		if (strcasecmp(input, "exit") == 0 ||
-		    strcasecmp(input,"quit") == 0) {
-			break;
-		}
-
-		add_history(input);
-		evaluate(input);
-
-		free(input);
-	}
-
-	free(input);
-
-	return EXIT_SUCCESS;
+//	return EXIT_SUCCESS;
 }
