@@ -20,7 +20,7 @@ include_directories("/usr/include" "/usr/local/include")
 link_directories("/usr/lib" "/usr/local/lib")
 
 find_path(CRITERION_INCLUDE_DIR NAMES criterion)
-find_library(CRITERION_LIBRARY NAMES criterion REQUIRED)
+find_library(CRITERION_LIBRARY NAMES criterion)
 if (CRITERION_LIBRARY)
 	include_directories(${CRITERION_INCLUDE_DIR})
 	set(TEST_LIBRARIES ${TEST_LIBRARIES} ${CRITERION_LIBRARY})
