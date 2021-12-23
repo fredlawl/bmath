@@ -5,7 +5,8 @@ a one stop tool that does calculations and conversions.
 
 There is no support for negative values. The maximum number a calculation may
 produce is a unsigned 64-bit integer. Overflow is possible if an expression
-calculation exceeds that number.
+calculation exceeds that number. This program assumes little-endian system, 
+but big-endian input.
 
 ## Install
 
@@ -33,7 +34,7 @@ Clone this repo, `cd` into the cloned directory, and then run the following comm
 ## Usage
 
 ```
-Usage: bmath [-u?V] [-d EXPR] [--detached=EXPR] [--uppercase] [--help]
+Usage: bmath [-u?V] [-d EXPR] [--detached=EXPR] [--uppercase] [--unicode] [--help]
             [--usage] [--version]
 
 ```
