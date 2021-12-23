@@ -57,17 +57,30 @@ static void print_unicode(uint64_t num, bool uppercase_hex, enum encoding_t from
 
     memcpy(&number_as_byte_array, &num, sizeof num);
 
+    printf("%s: ", to_encoding_pretty_print_lookup[to_unicode]);
+
     // Convert to UTF-8
     cd = iconv_open("UTF-8", from_encoding_lookup[from_unicode]);
-    iconv(cd, &utf8_input, &in_size, &utf8, &utf8_size);
+    size_t utf8_conversion = iconv(cd, &utf8_input, &in_size, &utf8, &utf8_size);
     iconv_close(cd);
+
+    if (utf8_conversion == (size_t) -1) {
+        printf("<invalid> ");
+    } else {
+        printf("%s ", utf8_buf);
+    }
 
     // Convert from_unicode to to_unicode
     cd = iconv_open(to_encoding_lookup[to_unicode], from_encoding_lookup[from_unicode]);
-    iconv(cd, &to_unicode_input, &in_bytes_size, &to_unicode_bytes, &to_unicode_size);
+    size_t conversion = iconv(cd, &to_unicode_input, &in_bytes_size, &to_unicode_bytes, &to_unicode_size);
     iconv_close(cd);
 
-    printf("%s: %s (0x", to_encoding_pretty_print_lookup[to_unicode], utf8_buf);
+    if (conversion == (size_t) -1) {
+        printf("(no bytes)\n");
+        return;
+    }
+
+    printf("(0x");
 
     /*
         Not great, but this is easier than counting bits to determine how many next bytes
