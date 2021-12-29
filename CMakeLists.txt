@@ -28,6 +28,14 @@ else(CRITERION_LIBRARY)
     message(WARNING "Unable to locate criterion. Test binary wont build.")
 endif(CRITERION_LIBRARY)
 
+find_package(Iconv)
+if (Iconv_FOUND)
+    include_directories(${Iconv_INCLUDE_DIRS})
+    set(LIBRARIES ${LIBRARIES} ${Iconv_LIBRARIES})
+else (Iconv_FOUND)
+    message(ERROR "Unable to find iconv")
+endif (Iconv_FOUND)
+
 set(SRC_FILES ${SRC_FILES} src/parser.c)
 
 add_executable(${PROJECT_NAME} src/bmath.c ${SRC_FILES})
