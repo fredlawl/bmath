@@ -42,7 +42,7 @@ static const char* to_encoding_pretty_print_lookup[] = {
 static void print_unicode(uint64_t num, bool uppercase_hex, enum encoding_t from_unicode, enum encoding_t to_unicode) {
     iconv_t cd;
 
-    uint8_t number_as_byte_array[8] = {0};
+    char number_as_byte_array[8] = {0};
     char* utf8_input = number_as_byte_array;
     char* to_unicode_input = number_as_byte_array;
     size_t in_size = sizeof number_as_byte_array;
