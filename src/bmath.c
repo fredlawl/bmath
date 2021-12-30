@@ -100,7 +100,7 @@ static void print_unicode(uint64_t num, bool uppercase_hex, enum encoding_t from
     }
 
     for (size_t i = 0; i < 8 - (to_unicode_size + offset); i++) {
-        __print_hex(0xff & to_unicode_buf[i], 2, uppercase_hex);
+        __print_hex((uint64_t) 0xff & to_unicode_buf[i], 2, uppercase_hex);
     }
 
     printf(")\n");
