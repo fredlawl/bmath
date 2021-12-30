@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <inttypes.h>
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -7,11 +8,10 @@
 #include <iconv.h>
 
 #include "argp_config.h"
-#include "conversions.h"
 #include "parser.h"
 #include "util.h"
 
-static bool upercaseHex = false;
+static bool uppercaseHex = false;
 static bool showUnicode = false;
 
 enum encoding_t {
@@ -166,7 +166,7 @@ int evaluate(const char* input)
 		return EXIT_FAILURE;
 	}
 
-	print_number(output, upercaseHex);
+	print_number(output, uppercaseHex);
 	return EXIT_SUCCESS;
 }
 
@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
 
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
-	upercaseHex = arguments.should_uppercase_hex;
+    uppercaseHex = arguments.should_uppercase_hex;
     showUnicode = arguments.should_show_unicode;
 
 	if (arguments.detached_expr) {

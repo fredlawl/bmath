@@ -1,10 +1,8 @@
 #ifndef BMATH_CONVERSIONS_H
 #define BMATH_CONVERSIONS_H
 
-#include <stdlib.h>
-#include <inttypes.h>
+#include <stdint.h>
 #include <ctype.h>
-#include <string.h>
 #include <math.h>
 
 #include "shim.h"
@@ -51,71 +49,6 @@ static bool str_hex_to_uint64(const char *input, uint64_t *result)
 	}
 
 	return true;
-}
-
-static uint64_t str_to_uint64(const char *input)
-{
-	char current_char;
-	uint64_t result = 0;
-	const char *start = input;
-
-	while ((current_char = *start++) != '\0') {
-		if (!isdigit(current_char))
-			continue;
-
-		result = result * 10 + (current_char - '0');
-	}
-
-	return result;
-}
-
-static size_t convert_uint64_to_hex(uint64_t num, char **out, bool uppercase)
-{
-	char *writep;
-	uint64_t quot = num;
-	int remainder = 0;
-	size_t str_len = 0;
-
-	*out = NULL;
-	while (quot > 0) {
-		str_len++;
-		quot /= 16;
-	}
-
-	if (num == 0)
-		str_len++;
-
-	*out = (char *) calloc(str_len + 1, sizeof(char));
-	if (*out == NULL)
-		return 0;
-
-	writep = *out;
-	if (num == 0) {
-		*writep++ = '0';
-		return str_len;
-	}
-
-	// Fill from end of string to front to avoid using a str reverse
-	// function.
-	writep += str_len - 1;
-	quot = num;
-	while (quot > 0) {
-		char cnum;
-		int offset;
-		remainder = quot % 16;
-		cnum = remainder + '0';
-
-		if (cnum > '9') {
-			offset = (remainder - 10) % 6;
-			*writep-- = (uppercase) ? offset + 'A' : offset + 'a';
-		} else {
-			*writep-- = cnum;
-		}
-
-		quot /= 16;
-	}
-
-	return str_len;
 }
 
 #endif
