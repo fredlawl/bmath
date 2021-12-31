@@ -5,7 +5,7 @@ a one stop tool that does calculations and conversions.
 
 There is no support for negative values. The maximum number a calculation may
 produce is a unsigned 64-bit integer. Overflow is possible if an expression
-calculation exceeds that number. This program assumes little-endian system, 
+calculation exceeds that number. This program assumes little-endian system,
 but big-endian input.
 
 ## Install
@@ -16,9 +16,10 @@ but big-endian input.
 
 Using homebrew, install the following libraries:
 1. `brew install argp-standalone`
-1. `brew install readline`
-1. `brew install cmake`
-1. (test suite only) `brew install criterion`
+2. `brew install readline`
+3. `brew install cmake`
+4. `brew install iconv`
+5. (test suite only) `brew install criterion`
 
 #### Linux
 
@@ -28,8 +29,9 @@ Using homebrew, install the following libraries:
 
 Clone this repo, `cd` into the cloned directory, and then run the following commands:
 1. `cmake CMakeLists.txt`
-1. `make`
-1. `cp ./bin/bmath /usr/local/bin`
+2. `make`
+3. `sudo make install`
+   > Installs to the `/usr/local/bin` directory.
 
 ## Usage
 

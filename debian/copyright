@@ -1,0 +1,7 @@
+Files: *
+Copyright: 2021 Frederick Lawler
+License: MIT
+
+Files: src/argp.h
+Copyright: 1995-1999,2003-2007 Free Software Foundation, Inc.
+License: GPL-2+

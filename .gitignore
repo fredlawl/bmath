@@ -211,3 +211,4 @@ fabric.properties
 
 *.cbp
 .cmake
+obj-x86_64-linux-gnu

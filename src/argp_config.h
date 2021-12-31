@@ -6,7 +6,12 @@
 
 #include "argp.h"
 
-const char *argp_program_version = "0.0.2";
+#ifdef VERSION
+const char *argp_program_version = VERSION;
+#else
+const char *argp_program_version = "1.0.0";
+#endif
+
 const char *argp_program_bug_address =
 	"Frederick Lawler <fred@fredlawl.com>";
 
@@ -38,10 +43,9 @@ static char doc[] =
 
 struct arguments
 {
-	char *args[0];
 	char *detached_expr;
 	bool should_uppercase_hex;
-    bool should_show_unicode;
+	bool should_show_unicode;
 };
 
 enum argument_opts {
@@ -68,8 +72,6 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 		case ARGP_KEY_ARG:
 			if (state->arg_num > 0)
 				argp_usage(state);
-
-			arguments->args[state->arg_num] = arg;
 
 			break;
 		case ARGP_KEY_END:
