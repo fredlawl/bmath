@@ -3,12 +3,12 @@ Maintainer: Frederick Lawler <fred@fredlawl.com>
 Section: misc
 Priority: optional
 Standards-Version: 4.5.1
-Build-Depends: cmake, debhelper (>= 13)
+Build-Depends: cmake, debhelper (>= 13), libreadline-dev, libc6-dev (>= 2.31)
 Homepage: https://github.com/fredlawl/bmath
 Vcs-Git: https://github.com/fredlawl/bmath
 
 Package: bmath
 Architecture: amd64
-Depends: ${shlib:Depends}, ${misc:Depends}
+Depends: ${shlib:Depends}, ${misc:Depends}, libreadline8, libc6 (>= 2.31)
 Description: 64bit big-endian bitwise operation calculator
  Calculates 64bit big-endian bitwise operations.
