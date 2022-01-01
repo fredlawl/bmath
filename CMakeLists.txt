@@ -10,6 +10,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 
 set(LIBRARIES "readline")
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+    include_directories("/usr/include" "/usr/local/include")
+    link_directories("/usr/lib" "/usr/local/lib")
     set(LIBRARIES ${LIBRARIES} "argp")
 else (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     set(LIBRARIES ${LIBRARIES} "m")
