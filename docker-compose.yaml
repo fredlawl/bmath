@@ -1,0 +1,19 @@
+version: "3.9"
+services:
+  build:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ./build.sh
+    working_dir: /work
+    volumes:
+      - .:/work
+  pkg-debian:
+    build:
+      context: .
+      dockerfile: fpm.Dockerfile
+    command: ./build-release.sh
+    working_dir: /work
+    volumes:
+      - ./bin:/work/bin
+      - ./build-release.sh:/work/build-release.sh
