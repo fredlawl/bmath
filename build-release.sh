@@ -13,7 +13,7 @@ fpm \
     --url "https://github.com/fredlawl/bmath" \
     --description "64bit big-endian bitwise operation calculator" \
     --license "MIT" \
-    -d "libreadline7" \
+    -d "libreadline5 >= 5" \
     -d "libc6 >= 2.15" \
     -d "libtinfo6" \
     -C bin \
