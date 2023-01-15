@@ -5,5 +5,4 @@ RUN apt-get update && \
         g++ \
         libghc-iconv-dev \
         libreadline-dev \
-        libreadline5 \
         cmake
