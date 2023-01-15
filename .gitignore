@@ -213,3 +213,8 @@ fabric.properties
 .cmake
 obj-x86_64-linux-gnu
 bin/
+
+node_modules
+flamegraph.html
+perf.data
+perf.data.old
