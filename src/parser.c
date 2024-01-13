@@ -314,7 +314,7 @@ static void __expect(struct lexer *lex, enum token_type expected)
 		return;
 	}
 
-	__general_error("Expecting token %d, but got %d instead.",
+	__general_error("Expecting token %d, but got %d instead.\n",
 	                expected, lookahead_token.type);
 }
 
