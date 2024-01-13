@@ -107,6 +107,19 @@ static void print_unicode(uint64_t num, bool uppercase_hex, enum encoding_t from
     printf(")\n");
 }
 
+static void print_binary(uint64_t number)
+{
+	uint64_t counter = 64;
+	while (counter > 0) {
+		uint64_t mask = (uint64_t) 1 << (counter - 1);
+		if ((counter % 8) == 0) printf(" ");
+		printf("%d", (number & mask) == mask);
+		counter--;
+		if ((counter % 32) == 0) printf("\n");
+	}
+	printf("\n");
+}
+
 static void print_number(uint64_t num, bool uppercase_hex)
 {
 	printf("   Dec: %" PRIu64 "\n", num);
