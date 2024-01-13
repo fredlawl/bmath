@@ -184,13 +184,14 @@ int main(int argc, char *argv[])
 
 	arguments.detached_expr = NULL;
 	arguments.should_uppercase_hex = false;
-    arguments.should_show_unicode = false;
+	arguments.should_show_unicode = false;
+	arguments.print_binary = false;
 
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
-    uppercaseHex = arguments.should_uppercase_hex;
-    showUnicode = arguments.should_show_unicode;
-    printBinary = arguments.print_binary;
+	uppercaseHex = arguments.should_uppercase_hex;
+	showUnicode = arguments.should_show_unicode;
+	printBinary = arguments.print_binary;
 
 	if (arguments.detached_expr) {
 		return evaluate(arguments.detached_expr);
