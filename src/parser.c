@@ -348,9 +348,9 @@ static uint64_t __term(struct lexer *lexer)
 
 	left = __factor(lexer);
 	while (true) {
-        if (lookahead_token.type != TOK_SHIFT_OP) {
-            break;
-        }
+		if (lookahead_token.type != TOK_SHIFT_OP) {
+			break;
+		}
 
 		tok = lookahead_token;
 		__expect(lexer, lookahead_token.type);
@@ -367,7 +367,7 @@ static uint64_t __term(struct lexer *lexer)
 
 static uint64_t __expr(struct lexer *lexer)
 {
-	uint64_t left, right, store;
+	uint64_t left, right;
 	struct token tok;
 
 	left = __term(lexer);
