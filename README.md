@@ -36,8 +36,8 @@ Clone this repo, `cd` into the cloned directory, and then run the following comm
 ## Usage
 
 ```
-Usage: bmath [-u?V] [-d EXPR] [--detached=EXPR] [--uppercase] [--unicode] [--help]
-            [--usage] [--version]
+Usage: bmath [-u?V] [-d EXPR] [--detached=EXPR] [--uppercase] [--unicode] [--binary]
+            [--help] [--usage] [--version]
 
 ```
 

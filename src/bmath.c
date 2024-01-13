@@ -13,6 +13,7 @@
 
 static bool uppercaseHex = false;
 static bool showUnicode = false;
+static bool printBinary = false;
 
 enum encoding_t {
     UTF8,
@@ -155,6 +156,10 @@ static void print_number(uint64_t num, bool uppercase_hex)
 	printf(" Hex64: 0x");
 	__print_hex(num, 16, uppercase_hex);
 	printf("\n");
+
+    if (printBinary) {
+        print_binary(num);
+    }
 }
 
 int evaluate(const char* input)
@@ -185,6 +190,7 @@ int main(int argc, char *argv[])
 
     uppercaseHex = arguments.should_uppercase_hex;
     showUnicode = arguments.should_show_unicode;
+    printBinary = arguments.print_binary;
 
 	if (arguments.detached_expr) {
 		return evaluate(arguments.detached_expr);

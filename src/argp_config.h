@@ -46,18 +46,21 @@ struct arguments
 	char *detached_expr;
 	bool should_uppercase_hex;
 	bool should_show_unicode;
+    bool print_binary;
 };
 
 enum argument_opts {
     OPT_UPPERCASE = 'u',
+    OPT_BINARY = 'b',
+    OPT_UNICODE = 128,
     OPT_DETACHED = 'd',
-    OPT_UNICODE = 128
 };
 
 static struct argp_option options[] = {
 	{"uppercase", OPT_UPPERCASE, 0, OPTION_ARG_OPTIONAL, "Uppercase hex output", 0},
-	{"detached", OPT_DETACHED, "EXPR", 0, "Execute single expression", 0},
+    {"binary", OPT_BINARY, 0, 0, "Print the result in binary", 0},
     {"unicode", OPT_UNICODE, 0, OPTION_ARG_OPTIONAL, "Print unicode characters", 0},
+	{"detached", OPT_DETACHED, "EXPR", 0, "Execute single expression", 0},
 	{0}
 };
 
@@ -67,8 +70,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 
 	switch (key) {
 		case OPT_UPPERCASE: arguments->should_uppercase_hex = true; break;
-		case OPT_DETACHED: arguments->detached_expr = arg; break;
+        case OPT_BINARY: arguments->print_binary = true; break;
         case OPT_UNICODE: arguments->should_show_unicode = true; break;
+        case OPT_DETACHED: arguments->detached_expr = arg; break;
 		case ARGP_KEY_ARG:
 			if (state->arg_num > 0)
 				argp_usage(state);
