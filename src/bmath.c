@@ -166,7 +166,7 @@ int evaluate(const char* input)
 {
 	uint64_t output = 0;
 	int result = parse(input, &output);
-	if (result <= 0) {
+	if (result) {
 		// notify error...
 		return EXIT_FAILURE;
 	}

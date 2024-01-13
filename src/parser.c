@@ -9,10 +9,12 @@
 #include "shim.h"
 #include "util.h"
 
+static bool liberror = false;
+
 #define __general_error(fmt, arg...)                    \
 do {                                                    \
 	fprintf(stderr, "[ERROR]: " fmt, ##arg);        \
-	exit(EXIT_FAILURE);                             \
+	liberror = true;				\
 } while(0)
 
 #define __lexical_error(l, fmt, arg...)                                                 \
@@ -21,7 +23,7 @@ do {                                                                            
 	fprintf(stderr, "%s\n", (l)->line);                                             \
 	__repeat_character(stderr, (l)->current_column, '~');                           \
 	fprintf(stderr, "%c " fmt "\n", '^', ##arg);                                    \
-	exit(EXIT_FAILURE);                                                             \
+	liberror = true;								\
 } while (0)
 
 enum token_type {
@@ -81,7 +83,7 @@ static uint64_t __perform_parse(struct lexer *lexer)
 	return __expr(lexer);
 }
 
-int16_t parse(const char *infix_expression, uint64_t *out_result)
+int parse(const char *infix_expression, uint64_t *out_result)
 {
 	size_t infix_expression_length;
 	struct lexer lexer;
@@ -100,7 +102,13 @@ int16_t parse(const char *infix_expression, uint64_t *out_result)
 		             (int16_t) infix_expression_length);
 
 	*out_result = __perform_parse(&lexer);
-	return 1;
+
+	if (liberror) {
+		liberror = false;
+		return -PE_PARSE_ERROR;
+	}
+
+	return 0;
 }
 
 static bool __is_operator(char character)
@@ -195,11 +203,13 @@ static void __lexer_parse_hex(struct lexer *lexer, struct token *token)
 	// the 0x that parsed.
 	if (hex_str_len == 2) {
 		__lexical_error(lexer, "No hex code was parsed");
+		return;
 	}
 
 	hex_str = (char *) calloc(hex_str_len + 1, sizeof(char));
 	if (hex_str == NULL) {
 		__general_error("Unable to allocate enough bytes for hex string parsing.\n");
+		return;
 	}
 
 	strncpy(hex_str, lexer->line + start_column, hex_str_len);
@@ -207,6 +217,8 @@ static void __lexer_parse_hex(struct lexer *lexer, struct token *token)
 	// This is a redundant check
 	if (!str_hex_to_uint64(hex_str, &result)) {
 		__lexical_error(lexer, "%s is an invalid hex code.", hex_str);
+		free(hex_str);
+		return;
 	}
 
 	free(hex_str);
@@ -299,6 +311,7 @@ static struct token __lexer_get_next_token(struct lexer *lexer)
 
 		if (__is_illegal_character(current_character)) {
 			__lexical_error(lexer, "Illegal character");
+			return token;
 		}
 
 		lexer->current_column++;
