@@ -230,3 +230,87 @@ Test(parser, verify_negation_without_paren, .exit_code =
 	             expected);
 	cr_assert_gt(result, 0);
 }
+
+Test(parser, verify_concat_expressions1, .exit_code =
+        EXIT_SUCCESS)
+{
+    uint64_t expected = 0x03;
+    uint64_t actual = 0;
+    int result = parse("(1 << 0) | (1 << 1)", &actual);
+
+    cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
+                 expected);
+    cr_assert_gt(result, 0);
+}
+
+Test(parser, verify_concat_expressions2, .exit_code =
+        EXIT_SUCCESS)
+{
+    uint64_t expected = 0x0f;
+    uint64_t actual = 0;
+    int result = parse("0x1 | 0x2 | 0x4 | 0x8", &actual);
+
+    cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
+                 expected);
+    cr_assert_gt(result, 0);
+}
+
+Test(parser, verify_concat_expressions3, .exit_code =
+        EXIT_SUCCESS)
+{
+    uint64_t expected = 0x0f;
+    uint64_t actual = 0;
+    int result = parse("(1 << 0) | (1 << 1) | (1 << 2) | (1 << 3)", &actual);
+
+    cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
+                 expected);
+    cr_assert_gt(result, 0);
+}
+
+Test(parser, verify_concat_expressions4, .exit_code =
+        EXIT_SUCCESS)
+{
+    uint64_t expected = 0x0f;
+    uint64_t actual = 0;
+    int result = parse("(((1 << 0) | (1 << 1)) | (1 << 2)) | (1 << 3)", &actual);
+
+    cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
+                 expected);
+    cr_assert_gt(result, 0);
+}
+
+Test(parser, verify_concat_expressions5, .exit_code =
+        EXIT_SUCCESS)
+{
+    uint64_t expected = 0x01;
+    uint64_t actual = 0;
+    int result = parse("(1 << 0) & 0x01", &actual);
+
+    cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
+                 expected);
+    cr_assert_gt(result, 0);
+}
+
+Test(parser, verify_concat_expressions6, .exit_code =
+        EXIT_SUCCESS)
+{
+    uint64_t expected = 0x00;
+    uint64_t actual = 0;
+    int result = parse("0x01 & (1 << 0) & 0x0", &actual);
+
+    cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
+                 expected);
+    cr_assert_gt(result, 0);
+}
+
+Test(parser, verify_concat_expressions7, .exit_code =
+        EXIT_SUCCESS)
+{
+    uint64_t expected = 0x02;
+    uint64_t actual = 0;
+    int result = parse("1 << 1 << 0", &actual);
+
+    cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
+                 expected);
+    cr_assert_gt(result, 0);
+}

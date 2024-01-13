@@ -348,15 +348,16 @@ static uint64_t __term(struct lexer *lexer)
 
 	left = __factor(lexer);
 	while (true) {
-		if (lookahead_token.type != TOK_SHIFT_OP)
-			break;
+        if (lookahead_token.type != TOK_SHIFT_OP) {
+            break;
+        }
 
 		tok = lookahead_token;
 		__expect(lexer, lookahead_token.type);
 		right = __factor(lexer);
 		switch (tok.attr) {
-			case ATTR_LSHIFT: return left << right;
-			case ATTR_RSHIFT: return left >> right;
+			case ATTR_LSHIFT: left <<= right; break;
+			case ATTR_RSHIFT: left >>= right; break;
 			default: __general_error("Something went wrong parsing term.\n");
 		}
 	}
@@ -366,7 +367,7 @@ static uint64_t __term(struct lexer *lexer)
 
 static uint64_t __expr(struct lexer *lexer)
 {
-	uint64_t left, right;
+	uint64_t left, right, store;
 	struct token tok;
 
 	left = __term(lexer);
@@ -378,9 +379,9 @@ static uint64_t __expr(struct lexer *lexer)
 		__expect(lexer, lookahead_token.type);
 		right = __term(lexer);
 		switch (tok.attr) {
-			case ATTR_OP_AND: return left & right;
-			case ATTR_OP_OR: return left | right;
-			case ATTR_OP_XOR: return left ^ right;
+			case ATTR_OP_AND: left &= right; break;
+			case ATTR_OP_OR: left |= right; break;
+			case ATTR_OP_XOR: left ^= right; break;
 			default: __general_error("Something went wrong parsing expr.\n");
 		}
 	}
