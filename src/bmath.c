@@ -196,14 +196,14 @@ int main(int argc, char *argv[]) {
   showUnicode = arguments.should_show_unicode;
   printBinary = arguments.print_binary;
 
-  if (arguments.detached_expr) {
-    return evaluate(arguments.detached_expr);
-  }
-
   if (showUnicode) {
     iconv_descriptors[0] = iconv_open(to_encoding_lookup[UTF8], from_encoding_lookup[UTF32]);
     iconv_descriptors[1] = iconv_open(to_encoding_lookup[UTF16], from_encoding_lookup[UTF32]);
     iconv_descriptors[2] = iconv_open(to_encoding_lookup[UTF32], from_encoding_lookup[UTF32]);
+  }
+
+  if (arguments.detached_expr) {
+    return evaluate(arguments.detached_expr);
   }
 
   while (true) {
