@@ -36,12 +36,16 @@ static void print_unicode(uint64_t num, bool uppercase_hex,
   size_t conversion;
 
   char number_as_byte_array[8] = {0};
+  char* utf8_input = number_as_byte_array;
   char *to_unicode_input = number_as_byte_array;
+  size_t in_size = sizeof number_as_byte_array;
   size_t in_bytes_size = sizeof number_as_byte_array;
 
   char utf8_buf[8] = {0};
+  char* utf8 = utf8_buf;
   char to_unicode_buf[8] = {0};
   char *to_unicode_bytes = to_unicode_buf;
+  size_t utf8_size = sizeof utf8_buf;
   size_t to_unicode_size = sizeof to_unicode_buf;
   
   size_t offset[3] = {1, 2, 4};
@@ -51,6 +55,20 @@ static void print_unicode(uint64_t num, bool uppercase_hex,
   // TODO: buffer the crap out of this function...  lots of samples in printf()
   printf("%s: ", to_encoding_pretty_print_lookup[to_unicode]);
 
+  // Convert to UTF-8
+  if (num < 31) {
+    printf("<special> ");
+  } else {
+    cd = iconv_descriptors[UTF8];
+    conversion = iconv(cd, &utf8_input, &in_size, &utf8, &utf8_size);
+
+    if (conversion == (size_t)-1) {
+      printf("<invalid> ");
+    } else {
+      printf("%s ", utf8_buf);
+    }
+  }
+
   // Convert from_unicode to to_unicode
   cd = iconv_descriptors[to_unicode];
   conversion = iconv(cd, &to_unicode_input, &in_bytes_size,
@@ -59,8 +77,6 @@ static void print_unicode(uint64_t num, bool uppercase_hex,
   if (conversion == (size_t)-1) {
     printf("<invalid>\n");
     return;
-  } else {
-    printf("%s ", utf8_buf);
   }
 
   printf("(0x");
