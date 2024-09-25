@@ -304,7 +304,7 @@ static struct token __lexer_get_next_token(struct lexer *lexer)
 			return token;
 		}
 
-		if (isdigit(current_character)) {
+		if (__isdigit(current_character)) {
 			__lexer_parse_number(lexer, &token);
 			return token;
 		}
