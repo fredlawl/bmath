@@ -121,7 +121,7 @@ static bool __is_allowed_character(char character)
 	return character == '<' || character == '>' || character == '(' ||
 	       character == ')' || character == '~' ||
 	       __is_operator(character) || __is_x(character) ||
-	       isdigit(character) || __ishexnumber(character) ||
+	       __isdigit(character) || __ishexnumber(character) ||
 	       isspace(character);
 }
 
@@ -159,7 +159,7 @@ static void __lexer_parse_number(struct lexer *lexer, struct token *token)
 	const char *line_reader = lexer->line + lexer->current_column;
 
 	while ((current_char = *line_reader++) != '\0' &&
-	       isdigit(current_char)) {
+	       __isdigit(current_char)) {
 		result = result * 10 + (current_char - '0');
 		lexer->current_column++;
 	}
