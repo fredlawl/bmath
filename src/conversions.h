@@ -1,8 +1,8 @@
 #ifndef BMATH_CONVERSIONS_H
 #define BMATH_CONVERSIONS_H
 
-#include <stdint.h>
 #include <ctype.h>
+#include <stdint.h>
 
 #include "shim.h"
 
@@ -34,13 +34,13 @@ static bool str_hex_to_uint64(const char *input, uint64_t *result)
 		if (isdigit(current_char)) {
 			temp = current_char - '0';
 		} else {
-			current_char = (current_char >= 'A' &&
-					current_char <= 'F') ?
-				  	current_char :
-				    	(char) (current_char - 32);
+			current_char =
+				(current_char >= 'A' && current_char <= 'F') ?
+					current_char :
+					(char)(current_char - 32);
 			temp = (current_char - 'A') + 10;
 		}
-				
+
 		*result = *result + temp;
 	} while (input_start != input_end);
 

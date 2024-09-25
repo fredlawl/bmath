@@ -1,30 +1,31 @@
-#include <stdlib.h>
-#include <string.h>
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include "parser.h"
 #include "conversions.h"
+#include "parser.h"
 #include "shim.h"
 #include "util.h"
 
 static bool liberror = false;
 
-#define __general_error(fmt, arg...)                    \
-do {                                                    \
-	fprintf(stderr, "[ERROR]: " fmt, ##arg);        \
-	liberror = true;				\
-} while(0)
+#define __general_error(fmt, arg...)                     \
+	do {                                             \
+		fprintf(stderr, "[ERROR]: " fmt, ##arg); \
+		liberror = true;                         \
+	} while (0)
 
 #define __lexical_error(l, fmt, arg...)                                                 \
-do {                                                                                    \
-	fprintf(stderr, "[PARSE ERROR]: There was an error parsing the expression:\n"); \
-	fprintf(stderr, "%s\n", (l)->line);                                             \
-	__repeat_character(stderr, (l)->current_column, '~');                           \
-	fprintf(stderr, "%c " fmt "\n", '^', ##arg);                                    \
-	liberror = true;								\
-} while (0)
+	do {                                                                            \
+		fprintf(stderr,                                                         \
+			"[PARSE ERROR]: There was an error parsing the expression:\n"); \
+		fprintf(stderr, "%s\n", (l)->line);                                     \
+		__repeat_character(stderr, (l)->current_column, '~');                   \
+		fprintf(stderr, "%c " fmt "\n", '^', ##arg);                            \
+		liberror = true;                                                        \
+	} while (0)
 
 enum token_type {
 	TOK_NUMBER = 1,
@@ -67,8 +68,7 @@ static bool __is_allowed_character(char character);
 static bool __is_illegal_character(char character);
 
 static struct lexer __init_lexer(const char *line, int16_t line_length);
-static void __lexer_parse_number(struct lexer *lexer,
-				 struct token *token);
+static void __lexer_parse_number(struct lexer *lexer, struct token *token);
 static void __lexer_parse_hex(struct lexer *lexer, struct token *token);
 static struct token __lexer_get_next_token(struct lexer *lexer);
 
@@ -95,11 +95,11 @@ int parse(const char *infix_expression, uint64_t *out_result)
 		return out_expression_length;
 
 	infix_expression_length = strlen(infix_expression);
-	if (infix_expression_length > (size_t) INT16_MAX)
+	if (infix_expression_length > (size_t)INT16_MAX)
 		return -PE_EXPRESSION_TOO_LONG;
 
 	lexer = __init_lexer(infix_expression,
-		             (int16_t) infix_expression_length);
+			     (int16_t)infix_expression_length);
 
 	*out_result = __perform_parse(&lexer);
 
@@ -113,23 +113,16 @@ int parse(const char *infix_expression, uint64_t *out_result)
 
 static bool __is_operator(char character)
 {
-	return character == '&'
-		|| character == '^'
-		|| character == '|';
+	return character == '&' || character == '^' || character == '|';
 }
 
 static bool __is_allowed_character(char character)
 {
-	return character == '<'
-		|| character == '>'
-		|| character == '('
-		|| character == ')'
-		|| character == '~'
-		|| __is_operator(character)
-		|| __is_x(character)
-		|| isdigit(character)
-		|| __ishexnumber(character)
-		|| isspace(character);
+	return character == '<' || character == '>' || character == '(' ||
+	       character == ')' || character == '~' ||
+	       __is_operator(character) || __is_x(character) ||
+	       isdigit(character) || __ishexnumber(character) ||
+	       isspace(character);
 }
 
 static bool __is_x(char character)
@@ -141,7 +134,6 @@ static bool __is_start_of_hex(char current_character, char peek)
 {
 	return current_character == '0' && __is_x(peek);
 }
-
 
 static bool __is_illegal_character(char character)
 {
@@ -159,15 +151,15 @@ static struct lexer __init_lexer(const char *line, int16_t line_length)
 	return lexer;
 }
 
-static void __lexer_parse_number(struct lexer *lexer,
-                                 struct token *token)
+static void __lexer_parse_number(struct lexer *lexer, struct token *token)
 {
 	char current_char;
 
 	uint64_t result = 0;
 	const char *line_reader = lexer->line + lexer->current_column;
 
-	while ((current_char = *line_reader++) != '\0' && isdigit(current_char)) {
+	while ((current_char = *line_reader++) != '\0' &&
+	       isdigit(current_char)) {
 		result = result * 10 + (current_char - '0');
 		lexer->current_column++;
 	}
@@ -193,7 +185,7 @@ static void __lexer_parse_hex(struct lexer *lexer, struct token *token)
 	line_reader = lexer->line + lexer->current_column;
 
 	while ((current_char = *line_reader++) != '\0' &&
-		__ishexnumber(current_char)) {
+	       __ishexnumber(current_char)) {
 		lexer->current_column++;
 	}
 
@@ -206,9 +198,10 @@ static void __lexer_parse_hex(struct lexer *lexer, struct token *token)
 		return;
 	}
 
-	hex_str = (char *) calloc(hex_str_len + 1, sizeof(char));
+	hex_str = (char *)calloc(hex_str_len + 1, sizeof(char));
 	if (hex_str == NULL) {
-		__general_error("Unable to allocate enough bytes for hex string parsing.\n");
+		__general_error(
+			"Unable to allocate enough bytes for hex string parsing.\n");
 		return;
 	}
 
@@ -243,8 +236,7 @@ static struct token __lexer_get_next_token(struct lexer *lexer)
 		return token;
 	}
 
-	while ((current_character = *line_reader++) != '\0')
-	{
+	while ((current_character = *line_reader++) != '\0') {
 		peek_character = *line_reader;
 
 		if (isspace(current_character)) {
@@ -290,10 +282,17 @@ static struct token __lexer_get_next_token(struct lexer *lexer)
 		if (__is_operator(current_character)) {
 			token.type = TOK_OP;
 			switch (current_character) {
-				case '&': token.attr = ATTR_OP_AND; break;
-				case '|': token.attr = ATTR_OP_OR; break;
-				case '^': token.attr = ATTR_OP_XOR; break;
-				default: break;
+			case '&':
+				token.attr = ATTR_OP_AND;
+				break;
+			case '|':
+				token.attr = ATTR_OP_OR;
+				break;
+			case '^':
+				token.attr = ATTR_OP_XOR;
+				break;
+			default:
+				break;
 			}
 			lexer->current_column++;
 			return token;
@@ -327,8 +326,8 @@ static void __expect(struct lexer *lex, enum token_type expected)
 		return;
 	}
 
-	__general_error("Expecting token %d, but got %d instead.\n",
-	                expected, lookahead_token.type);
+	__general_error("Expecting token %d, but got %d instead.\n", expected,
+			lookahead_token.type);
 }
 
 static uint64_t __factor(struct lexer *lexer)
@@ -369,9 +368,14 @@ static uint64_t __term(struct lexer *lexer)
 		__expect(lexer, lookahead_token.type);
 		right = __factor(lexer);
 		switch (tok.attr) {
-			case ATTR_LSHIFT: left <<= right; break;
-			case ATTR_RSHIFT: left >>= right; break;
-			default: __general_error("Something went wrong parsing term.\n");
+		case ATTR_LSHIFT:
+			left <<= right;
+			break;
+		case ATTR_RSHIFT:
+			left >>= right;
+			break;
+		default:
+			__general_error("Something went wrong parsing term.\n");
 		}
 	}
 
@@ -392,10 +396,17 @@ static uint64_t __expr(struct lexer *lexer)
 		__expect(lexer, lookahead_token.type);
 		right = __term(lexer);
 		switch (tok.attr) {
-			case ATTR_OP_AND: left &= right; break;
-			case ATTR_OP_OR: left |= right; break;
-			case ATTR_OP_XOR: left ^= right; break;
-			default: __general_error("Something went wrong parsing expr.\n");
+		case ATTR_OP_AND:
+			left &= right;
+			break;
+		case ATTR_OP_OR:
+			left |= right;
+			break;
+		case ATTR_OP_XOR:
+			left ^= right;
+			break;
+		default:
+			__general_error("Something went wrong parsing expr.\n");
 		}
 	}
 
