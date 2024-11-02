@@ -3,14 +3,15 @@
 
 #include <ctype.h>
 #include <stdint.h>
+#include <unistd.h>
 
 #include "shim.h"
 
-static bool str_hex_to_uint64(const char *input, uint64_t *result)
+static bool str_hex_to_uint64(const char *input, size_t input_length,
+			      uint64_t *result)
 {
 	char current_char;
 
-	size_t input_length = strlen(input);
 	const char *input_start = input;
 	const char *input_end = input + input_length;
 

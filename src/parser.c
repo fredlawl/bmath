@@ -173,11 +173,12 @@ static void __lexer_parse_number(struct lexer *lexer, struct token *token)
 
 static void __lexer_parse_hex(struct lexer *lexer, struct token *token)
 {
+	// 0x + 8 bytes for 64bit number
+#define MAX_HEX_STR 2 + 16
 	const char *line_reader;
 	char current_char;
 	size_t start_column;
 	size_t hex_str_len;
-	char *hex_str;
 
 	uint64_t result = 0;
 
@@ -201,23 +202,16 @@ static void __lexer_parse_hex(struct lexer *lexer, struct token *token)
 		return;
 	}
 
-	hex_str = (char *)calloc(hex_str_len + 1, sizeof(char));
-	if (hex_str == NULL) {
-		__general_error(
-			"Unable to allocate enough bytes for hex string parsing.\n");
+	if (hex_str_len > MAX_HEX_STR) {
+		__lexical_error(lexer, "hex number exceeds 8 bytes");
 		return;
 	}
 
-	strncpy(hex_str, lexer->line + start_column, hex_str_len);
-
-	// This is a redundant check
-	if (!str_hex_to_uint64(hex_str, &result)) {
-		__lexical_error(lexer, "%s is an invalid hex code.", hex_str);
-		free(hex_str);
+	const char *start = lexer->line + start_column;
+	if (!str_hex_to_uint64(start, hex_str_len, &result)) {
+		__lexical_error(lexer, "invalid hex");
 		return;
 	}
-
-	free(hex_str);
 
 	token->type = TOK_NUMBER;
 	token->attr = result;
