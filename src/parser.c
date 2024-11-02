@@ -1,5 +1,6 @@
 #include <ctype.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -87,26 +88,28 @@ int parse(const char *infix_expression, uint64_t *out_result)
 {
 	size_t infix_expression_length;
 	struct lexer lexer;
-	int16_t out_expression_length = PE_NOTHING_TO_PARSE;
+	uint64_t result;
 
 	*out_result = 0;
 
-	if (*infix_expression == '\0')
-		return out_expression_length;
-
 	infix_expression_length = strlen(infix_expression);
+	if (infix_expression_length == 0)
+		return -PE_NOTHING_TO_PARSE;
+
 	if (infix_expression_length > (size_t)INT16_MAX)
 		return -PE_EXPRESSION_TOO_LONG;
 
 	lexer = __init_lexer(infix_expression,
 			     (int16_t)infix_expression_length);
 
-	*out_result = __perform_parse(&lexer);
+	result = __perform_parse(&lexer);
 
 	if (liberror) {
 		liberror = false;
 		return -PE_PARSE_ERROR;
 	}
+
+	*out_result = result;
 
 	return 0;
 }

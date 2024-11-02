@@ -1,37 +1,36 @@
 #include <criterion/criterion.h>
+#include <criterion/internal/assert.h>
+#include <criterion/logging.h>
 #include <inttypes.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 #include "../src/parser.h"
 
 static void setup(void)
 {
-
 }
 
 static void teardown(void)
 {
-
 }
 
-Test(parser, verify_sanity, .init = setup, .fini =
-	teardown, .exit_code = EXIT_SUCCESS)
+Test(parser, verify_sanity, .init = setup, .fini = teardown)
 {
 	cr_assert(true);
 }
 
-Test(parser, verify_parser_handles_no_input,
-	.exit_code = EXIT_SUCCESS)
+Test(parser, verify_parser_handles_no_input)
 {
-	char *expected = NULL;
-	char *actual = NULL;
+	uint64_t expected = 0;
+	uint64_t actual = 0;
 	int result = parse("", &actual);
 
-	cr_assert_eq(result, 0);
+	cr_assert(result != 0);
 	cr_assert_eq(actual, expected);
 }
 
-Test(parser, verify_parser_handles_very_long_string, .exit_code = EXIT_SUCCESS)
+Test(parser, verify_parser_handles_very_long_string)
 {
 	uint64_t output = 0;
 	int result = parse(
@@ -41,56 +40,53 @@ Test(parser, verify_parser_handles_very_long_string, .exit_code = EXIT_SUCCESS)
 	cr_assert_eq(result, -PE_EXPRESSION_TOO_LONG);
 }
 
-Test(parser, verify_parser_handles_single_digit_terminal,
-     .exit_code = EXIT_SUCCESS)
+Test(parser, verify_parser_handles_single_digit_terminal)
 {
 	uint64_t expected = 1;
 	uint64_t actual = 0;
 	int result = parse("1", &actual);
 
 	cr_assert_eq(actual, expected);
-	cr_assert_gt(result, 0);
+	cr_assert_eq(result, 0);
 }
 
-Test(parser, verify_parser_skips_whitespae, .exit_code = EXIT_SUCCESS)
+Test(parser, verify_parser_skips_whitespae)
 {
 	uint64_t expected = 1;
 	uint64_t actual = 1;
 	int result = parse("\t\n    1 ", &actual);
 
 	cr_assert_eq(actual, expected);
-	cr_assert_gt(result, 0);
+	cr_assert_eq(result, 0);
 }
 
-Test(parser, verify_parser_errors_on_invalid_characters, .exit_code =
-	EXIT_FAILURE)
+Test(parser, verify_parser_errors_on_invalid_characters)
 {
 	uint64_t expected = 0;
 	uint64_t actual = 0;
 	int result = parse(".!@#$%`*.,<>?/\\;:'\"[]{}+=-_", &actual);
 
+	cr_assert_neq(result, 0);
 	cr_assert_eq(actual, expected);
 }
 
-Test(parser, verify_partial_parse_with_illegal_character, .exit_code =
-	EXIT_FAILURE)
+Test(parser, partial_parse_with_illegal_character_should_fail)
 {
-	uint64_t expected = 1;
+	uint64_t expected = 0;
 	uint64_t actual = 0;
 	int result = parse("1.0", &actual);
 
+	cr_assert(result < 0);
 	cr_assert_eq(actual, expected);
 }
 
-Test(parser, verify_hex_value_requires_hex_after_zero_x, .exit_code =
-	EXIT_FAILURE)
+Test(parser, verify_hex_value_requires_hex_after_zero_x)
 {
 	uint64_t actual = 0;
 	parse("0x", &actual);
 }
 
-Test(parser, verify_hex_value_evaluates, .exit_code =
-	EXIT_SUCCESS)
+Test(parser, verify_hex_value_evaluates)
 {
 	uint64_t expected = 1;
 	uint64_t actual = 0;
@@ -98,219 +94,203 @@ Test(parser, verify_hex_value_evaluates, .exit_code =
 
 	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
 		     expected);
-	cr_assert_gt(result, 0);
+	cr_assert_eq(result, 0);
 }
 
-Test(parser, verify_or, .exit_code =
-	EXIT_SUCCESS)
+Test(parser, verify_or)
 {
 	uint64_t expected = 3;
 	uint64_t actual = 0;
 	int result = parse("1 | 2", &actual);
 
 	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-	             expected);
-	cr_assert_gt(result, 0);
+		     expected);
+	cr_assert_eq(result, 0);
 }
 
-Test(parser, verify_and, .exit_code =
-	EXIT_SUCCESS)
+Test(parser, verify_and)
 {
 	uint64_t expected = 2;
 	uint64_t actual = 0;
 	int result = parse("2 & 2", &actual);
 
 	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-	             expected);
-	cr_assert_gt(result, 0);
+		     expected);
+	cr_assert_eq(result, 0);
 }
 
-Test(parser, verify_check_1_is_not_in_2, .exit_code =
-	EXIT_SUCCESS)
+Test(parser, verify_check_1_is_not_in_2)
 {
 	uint64_t expected = 0;
 	uint64_t actual = 0;
 	int result = parse("1 & 2", &actual);
 
 	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-	             expected);
-	cr_assert_gt(result, 0);
+		     expected);
+	cr_assert_eq(result, 0);
 }
 
-Test(parser, verify_xor, .exit_code =
-	EXIT_SUCCESS)
+Test(parser, verify_xor)
 {
 	uint64_t expected = 1;
 	uint64_t actual = 0;
 	int result = parse("3 ^ 2", &actual);
 
 	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-	             expected);
-	cr_assert_gt(result, 0);
+		     expected);
+	cr_assert_eq(result, 0);
 }
 
-Test(parser, verify_parens_of_single_expression, .exit_code =
-	EXIT_SUCCESS)
+Test(parser, verify_parens_of_single_expression)
 {
 	uint64_t expected = 1;
 	uint64_t actual = 0;
 	int result = parse("(1)", &actual);
 
 	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-	             expected);
-	cr_assert_gt(result, 0);
+		     expected);
+	cr_assert_eq(result, 0);
 }
 
-Test(parser, verify_combination, .exit_code =
-	EXIT_SUCCESS)
+Test(parser, verify_combination)
 {
 	uint64_t expected = 3;
 	uint64_t actual = 0;
 	int result = parse("(1 | 3) | (1 | 3)", &actual);
 
 	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-	             expected);
-	cr_assert_gt(result, 0);
+		     expected);
+	cr_assert_eq(result, 0);
 }
 
-Test(parser, verify_left_shift, .exit_code =
-	EXIT_SUCCESS)
+Test(parser, verify_left_shift)
 {
 	uint64_t expected = 24;
 	uint64_t actual = 0;
 	int result = parse("(1 | 3) << (1 | 3)", &actual);
 
 	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-	             expected);
-	cr_assert_gt(result, 0);
+		     expected);
+	cr_assert_eq(result, 0);
 }
 
-Test(parser, verify_order_of_operations, .exit_code =
-	EXIT_SUCCESS)
+Test(parser, verify_order_of_operations)
 {
 	uint64_t expected = 7;
 	uint64_t actual = 0;
 	int result = parse("1 | 3 << 1 | 3", &actual);
 
 	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-	             expected);
-	cr_assert_gt(result, 0);
+		     expected);
+	cr_assert_eq(result, 0);
 }
 
-Test(parser, verify_things_break, .exit_code =
-	EXIT_FAILURE)
+Test(parser, verify_things_break)
 {
-	int expected = 0;
-	uint64_t filler = 0;
-	int result = parse("1 || 3", &filler);
-	cr_assert(result == expected);
+	uint64_t expected = 0;
+	uint64_t actual = 0;
+	int result = parse("1 || 3", &actual);
+	cr_assert(result < 0);
+	cr_assert(actual == expected);
 }
 
-
-Test(parser, verify_negation_with_paren, .exit_code =
-	EXIT_SUCCESS)
+Test(parser, verify_negation_with_paren)
 {
 	uint64_t expected = ~0;
 	uint64_t actual = 0;
 	int result = parse("~(0)", &actual);
 
 	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-	             expected);
-	cr_assert_gt(result, 0);
+		     expected);
+	cr_assert_eq(result, 0);
 }
 
-Test(parser, verify_negation_without_paren, .exit_code =
-	EXIT_SUCCESS)
+Test(parser, verify_negation_without_paren)
 {
 	uint64_t expected = ~0;
 	uint64_t actual = 0;
 	int result = parse("~0", &actual);
 
 	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-	             expected);
-	cr_assert_gt(result, 0);
+		     expected);
+	cr_assert_eq(result, 0);
 }
 
-Test(parser, verify_concat_expressions1, .exit_code =
-        EXIT_SUCCESS)
+Test(parser, verify_concat_expressions1)
 {
-    uint64_t expected = 0x03;
-    uint64_t actual = 0;
-    int result = parse("(1 << 0) | (1 << 1)", &actual);
+	uint64_t expected = 0x03;
+	uint64_t actual = 0;
+	int result = parse("(1 << 0) | (1 << 1)", &actual);
 
-    cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-                 expected);
-    cr_assert_gt(result, 0);
+	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
+		     expected);
+	cr_assert_eq(result, 0);
 }
 
-Test(parser, verify_concat_expressions2, .exit_code =
-        EXIT_SUCCESS)
+Test(parser, verify_concat_expressions2)
 {
-    uint64_t expected = 0x0f;
-    uint64_t actual = 0;
-    int result = parse("0x1 | 0x2 | 0x4 | 0x8", &actual);
+	uint64_t expected = 0x0f;
+	uint64_t actual = 0;
+	int result = parse("0x1 | 0x2 | 0x4 | 0x8", &actual);
 
-    cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-                 expected);
-    cr_assert_gt(result, 0);
+	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
+		     expected);
+	cr_assert_eq(result, 0);
 }
 
-Test(parser, verify_concat_expressions3, .exit_code =
-        EXIT_SUCCESS)
+Test(parser, verify_concat_expressions3)
 {
-    uint64_t expected = 0x0f;
-    uint64_t actual = 0;
-    int result = parse("(1 << 0) | (1 << 1) | (1 << 2) | (1 << 3)", &actual);
+	uint64_t expected = 0x0f;
+	uint64_t actual = 0;
+	int result =
+		parse("(1 << 0) | (1 << 1) | (1 << 2) | (1 << 3)", &actual);
 
-    cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-                 expected);
-    cr_assert_gt(result, 0);
+	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
+		     expected);
+	cr_assert_eq(result, 0);
 }
 
-Test(parser, verify_concat_expressions4, .exit_code =
-        EXIT_SUCCESS)
+Test(parser, verify_concat_expressions4)
 {
-    uint64_t expected = 0x0f;
-    uint64_t actual = 0;
-    int result = parse("(((1 << 0) | (1 << 1)) | (1 << 2)) | (1 << 3)", &actual);
+	uint64_t expected = 0x0f;
+	uint64_t actual = 0;
+	int result =
+		parse("(((1 << 0) | (1 << 1)) | (1 << 2)) | (1 << 3)", &actual);
 
-    cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-                 expected);
-    cr_assert_gt(result, 0);
+	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
+		     expected);
+	cr_assert_eq(result, 0);
 }
 
-Test(parser, verify_concat_expressions5, .exit_code =
-        EXIT_SUCCESS)
+Test(parser, verify_concat_expressions5)
 {
-    uint64_t expected = 0x01;
-    uint64_t actual = 0;
-    int result = parse("(1 << 0) & 0x01", &actual);
+	uint64_t expected = 0x01;
+	uint64_t actual = 0;
+	int result = parse("(1 << 0) & 0x01", &actual);
 
-    cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-                 expected);
-    cr_assert_gt(result, 0);
+	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
+		     expected);
+	cr_assert_eq(result, 0);
 }
 
-Test(parser, verify_concat_expressions6, .exit_code =
-        EXIT_SUCCESS)
+Test(parser, verify_concat_expressions6)
 {
-    uint64_t expected = 0x00;
-    uint64_t actual = 0;
-    int result = parse("0x01 & (1 << 0) & 0x0", &actual);
+	uint64_t expected = 0x00;
+	uint64_t actual = 0;
+	int result = parse("0x01 & (1 << 0) & 0x0", &actual);
 
-    cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-                 expected);
-    cr_assert_gt(result, 0);
+	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
+		     expected);
+	cr_assert_eq(result, 0);
 }
 
-Test(parser, verify_concat_expressions7, .exit_code =
-        EXIT_SUCCESS)
+Test(parser, verify_concat_expressions7)
 {
-    uint64_t expected = 0x02;
-    uint64_t actual = 0;
-    int result = parse("1 << 1 << 0", &actual);
+	uint64_t expected = 0x02;
+	uint64_t actual = 0;
+	int result = parse("1 << 1 << 0", &actual);
 
-    cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-                 expected);
-    cr_assert_gt(result, 0);
+	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
+		     expected);
+	cr_assert_eq(result, 0);
 }
