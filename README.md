@@ -1,4 +1,5 @@
 # Bmath (Bitwise math)
+
 Online or native shell calculators either have weird syntax to follow, or no
 syntax at all that allows nested calculations. Bmath solves these problems with
 a one stop tool that does calculations and conversions.
@@ -15,6 +16,7 @@ but big-endian input.
 #### MacOS
 
 Using homebrew, install the following libraries:
+
 1. `brew install argp-standalone`
 2. `brew install readline`
 3. `brew install cmake`
@@ -28,7 +30,8 @@ Using homebrew, install the following libraries:
 ### Compile & Install
 
 Clone this repo, `cd` into the cloned directory, and then run the following commands:
-1. `cmake CMakeLists.txt`
+
+1. `mkdir -p build && cd build && -DCMAKE_BUILD_TYPE=Release ../CMakeLists.txt`
 2. `make`
 3. `sudo make install`
    > Installs to the `/usr/local/bin` directory.
@@ -85,6 +88,7 @@ Hex64: 0x0000000000000003
 ```
 
 When a value is calculated greater than unsigned 16-bit integer:
+
 ```shell
 $ ./bmath -d "1 << 17"
   Dec: 131072

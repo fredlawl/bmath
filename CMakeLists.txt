@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(bmath VERSION 1.0.0)
+project(bmath VERSION 1.0.0 LANGUAGES C)
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG")
 
 set(CMAKE_C_COMPILER gcc)
 set(CMAKE_CXX_COMPILER g++)
