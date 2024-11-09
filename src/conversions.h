@@ -32,7 +32,7 @@ static bool str_hex_to_uint64(const char *input, size_t input_length,
 			return false;
 
 		*result = *result << 4;
-		if (isdigit(current_char)) {
+		if (__isdigit(current_char)) {
 			temp = current_char - '0';
 		} else {
 			current_char =
