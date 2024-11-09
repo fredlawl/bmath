@@ -218,3 +218,7 @@ node_modules
 flamegraph.html
 perf.data
 perf.data.old
+out.perf
+flamegraph.svg
+perf.folded
+test-input
