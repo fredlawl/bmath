@@ -62,11 +62,11 @@ struct lexer {
 // fixable global variable
 static struct token lookahead_token;
 
-static bool __is_operator(char character);
-static bool __is_x(char character);
-static bool __is_start_of_hex(char current_character, char peek);
-static bool __is_allowed_character(char character);
-static bool __is_illegal_character(char character);
+static inline bool __is_operator(char character);
+static inline bool __is_x(char character);
+static inline bool __is_start_of_hex(char current_character, char peek);
+static inline bool __is_allowed_character(char character);
+static inline bool __is_illegal_character(char character);
 
 static struct lexer __init_lexer(const char *line, int16_t line_length);
 static void __lexer_parse_number(struct lexer *lexer, struct token *token);
@@ -114,12 +114,12 @@ int parse(const char *infix_expression, uint64_t *out_result)
 	return 0;
 }
 
-static bool __is_operator(char character)
+static inline bool __is_operator(char character)
 {
 	return character == '&' || character == '^' || character == '|';
 }
 
-static bool __is_allowed_character(char character)
+static inline bool __is_allowed_character(char character)
 {
 	return character == '<' || character == '>' || character == '(' ||
 	       character == ')' || character == '~' ||
@@ -128,17 +128,17 @@ static bool __is_allowed_character(char character)
 	       isspace(character);
 }
 
-static bool __is_x(char character)
+static inline bool __is_x(char character)
 {
 	return character == 'x' || character == 'X';
 }
 
-static bool __is_start_of_hex(char current_character, char peek)
+static inline bool __is_start_of_hex(char current_character, char peek)
 {
 	return current_character == '0' && __is_x(peek);
 }
 
-static bool __is_illegal_character(char character)
+static inline bool __is_illegal_character(char character)
 {
 	return !__is_allowed_character(character);
 }
