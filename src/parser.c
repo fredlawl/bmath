@@ -2,8 +2,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include "conversions.h"
 #include "parser.h"
@@ -173,13 +173,18 @@ static void __lexer_parse_number(struct lexer *lexer, struct token *token)
 
 static void __lexer_parse_hex(struct lexer *lexer, struct token *token)
 {
-	// 8 bytes for 64bit number
-#define MAX_HEX_STR 16
+	// 8 bytes for 64bit number + 0x
+#define MAX_HEX_STR 16 + 2
 	uint64_t result = 0;
 	const char *start = lexer->line + lexer->current_column;
 
-	ssize_t bytes_parsed = str_hex_to_uint64(start, MAX_HEX_STR, &result);
+	size_t bytes_parsed = str_hex_to_uint64(start, MAX_HEX_STR, &result);
 	if (bytes_parsed == 0) {
+		if (errno == E2BIG) {
+			__lexical_error(lexer, "exceeded 8 bytes");
+			return;
+		}
+
 		__lexical_error(lexer, "invalid hex");
 		return;
 	}

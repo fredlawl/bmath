@@ -4,23 +4,27 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include "shim.h"
 
-static ssize_t str_hex_to_uint64(const char *input, ssize_t input_length,
-				 uint64_t *result)
+static size_t str_hex_to_uint64(const char *input, ssize_t input_length,
+				uint64_t *result)
 {
 	char current_char;
 	ssize_t bytes_parsed = 0;
 
 	const char *input_start = input;
-	const char *input_end = input + input_length;
 
-	if (*input_start++ != '0')
-		return 0;
+	if (*input_start++ != '0') {
+		errno = EINVAL;
+		return bytes_parsed;
+	}
 
-	if (!(*input_start == 'x' || *input_start == 'X'))
-		return 0;
+	if (!(*input_start == 'x' || *input_start == 'X')) {
+		errno = EINVAL;
+		return bytes_parsed;
+	}
 
 	input_start++;
 
@@ -46,10 +50,12 @@ static ssize_t str_hex_to_uint64(const char *input, ssize_t input_length,
 		*result = *result + temp;
 		bytes_parsed++;
 
-		if (bytes_parsed == input_length)
-			return bytes_parsed;
+		if (bytes_parsed + 2 > input_length) {
+			errno = E2BIG;
+			return 0;
+		}
 
-	} while (input_start != input_end);
+	} while (1);
 
 	return bytes_parsed;
 }
