@@ -52,19 +52,18 @@ static void print_unicode(uint64_t num, bool uppercase_hex,
 
 	memcpy(&number_as_byte_array, &num, sizeof num);
 
-	// TODO: buffer the crap out of this function...  lots of samples in printf()
 	printf("%s: ", to_encoding_pretty_print_lookup[to_unicode]);
 
 	// Convert to UTF-8
 	if (num < 31) {
-		printf("<special> ");
+		fputs("<special> ", stdout);
 	} else {
 		cd = iconv_descriptors[UTF8];
 		conversion =
 			iconv(cd, &utf8_input, &in_size, &utf8, &utf8_size);
 
 		if (conversion == (size_t)-1) {
-			printf("<invalid> ");
+			fputs("<invalid> ", stdout);
 		} else {
 			printf("%s ", utf8_buf);
 		}
@@ -76,11 +75,11 @@ static void print_unicode(uint64_t num, bool uppercase_hex,
 			   &to_unicode_bytes, &to_unicode_size);
 
 	if (conversion == (size_t)-1) {
-		printf("<invalid>\n");
+		puts("<invalid>");
 		return;
 	}
 
-	printf("(0x");
+	fputs("(0x", stdout);
 
 	/*
 	 re: offset
@@ -94,7 +93,7 @@ static void print_unicode(uint64_t num, bool uppercase_hex,
 			    uppercase_hex);
 	}
 
-	printf(")\n");
+	puts(")");
 }
 
 static void print_binary(uint64_t number)
@@ -119,10 +118,10 @@ static void print_binary(uint64_t number)
 			i++;
 		}
 	}
-	write(1, buff, sizeof(buff));
+
+	fwrite(buff, sizeof(buff), 1, stdout);
 }
 
-// TODO: Buffer the printf's too many of them
 static void print_number(uint64_t num, bool uppercase_hex)
 {
 	printf("   u64: %" PRIu64 "\n", num);
@@ -140,12 +139,12 @@ static void print_number(uint64_t num, bool uppercase_hex)
 	if (!showUnicode) {
 		if (num <= CHAR_MAX) {
 			if (num <= 31) {
-				printf("  char: <special>\n");
+				puts("  char: <special>");
 			} else {
 				printf("  char: %c\n", (char)num);
 			}
 		} else {
-			printf("  char: Exceeded\n");
+			puts("  char: Exceeded");
 		}
 	} else {
 		if (num <= UINT32_MAX) {
@@ -162,29 +161,29 @@ static void print_number(uint64_t num, bool uppercase_hex)
 		}
 	}
 
-	printf("   Hex: 0x");
+	fputs("   Hex: 0x", stdout);
 	__print_hex(num, 0, uppercase_hex);
-	printf("\n");
+	putchar('\n');
 
 	if (num <= UINT16_MAX) {
-		printf(" Hex16: 0x");
+		fputs(" Hex16: 0x", stdout);
 		__print_hex(num, 4, uppercase_hex);
-		printf("\n");
+		putchar('\n');
 	} else {
-		printf(" Hex16: Exceeded\n");
+		puts(" Hex16: Exceeded");
 	}
 
 	if (num <= UINT32_MAX) {
-		printf(" Hex32: 0x");
+		fputs(" Hex32: 0x", stdout);
 		__print_hex(num, 8, uppercase_hex);
-		printf("\n");
+		putchar('\n');
 	} else {
-		printf(" Hex32: Exceeded\n");
+		puts(" Hex32: Exceeded");
 	}
 
-	printf(" Hex64: 0x");
+	fputs(" Hex64: 0x", stdout);
 	__print_hex(num, 16, uppercase_hex);
-	printf("\n");
+	putchar('\n');
 
 	if (printBinary) {
 		print_binary(num);
