@@ -180,7 +180,7 @@ static void __lexer_parse_hex(struct lexer *lexer, struct token *token)
 
 	size_t bytes_parsed = str_hex_to_uint64(start, MAX_HEX_STR, &result);
 	if (bytes_parsed == 0) {
-		if (errno == E2BIG) {
+		if (errno == EOVERFLOW) {
 			__lexical_error(lexer, "exceeded 8 bytes");
 			return;
 		}
@@ -189,7 +189,7 @@ static void __lexer_parse_hex(struct lexer *lexer, struct token *token)
 		return;
 	}
 
-	lexer->line += bytes_parsed + 2;
+	lexer->line += bytes_parsed;
 
 	token->type = TOK_NUMBER;
 	token->attr = result;

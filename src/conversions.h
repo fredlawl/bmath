@@ -27,6 +27,7 @@ static size_t str_hex_to_uint64(const char *input, ssize_t input_length,
 	}
 
 	input_start++;
+	bytes_parsed += 2;
 
 	*result = 0;
 	do {
@@ -50,8 +51,8 @@ static size_t str_hex_to_uint64(const char *input, ssize_t input_length,
 		*result = *result + temp;
 		bytes_parsed++;
 
-		if (bytes_parsed + 2 > input_length) {
-			errno = E2BIG;
+		if (bytes_parsed > input_length) {
+			errno = EOVERFLOW;
 			return 0;
 		}
 
