@@ -173,45 +173,18 @@ static void __lexer_parse_number(struct lexer *lexer, struct token *token)
 
 static void __lexer_parse_hex(struct lexer *lexer, struct token *token)
 {
-	// 0x + 8 bytes for 64bit number
-#define MAX_HEX_STR 2 + 16
-	const char *line_reader;
-	char current_char;
-	size_t start_column;
-	size_t hex_str_len;
-
+	// 8 bytes for 64bit number
+#define MAX_HEX_STR 16
 	uint64_t result = 0;
+	const char *start = lexer->line + lexer->current_column;
 
-	start_column = lexer->current_column;
-
-	// Skip the 0x to count the remaining characters to extract out
-	lexer->current_column += 2;
-	line_reader = lexer->line + lexer->current_column;
-
-	while ((current_char = *line_reader++) != '\0' &&
-	       __ishexnumber(current_char)) {
-		lexer->current_column++;
-	}
-
-	hex_str_len = lexer->current_column - start_column;
-
-	// We can assume that if there's only 2 characters, then it's just
-	// the 0x that parsed.
-	if (hex_str_len == 2) {
-		__lexical_error(lexer, "No hex code was parsed");
-		return;
-	}
-
-	if (hex_str_len > MAX_HEX_STR) {
-		__lexical_error(lexer, "hex number exceeds 8 bytes");
-		return;
-	}
-
-	const char *start = lexer->line + start_column;
-	if (!str_hex_to_uint64(start, hex_str_len, &result)) {
+	ssize_t bytes_parsed = str_hex_to_uint64(start, MAX_HEX_STR, &result);
+	if (bytes_parsed == 0) {
 		__lexical_error(lexer, "invalid hex");
 		return;
 	}
+
+	lexer->line += bytes_parsed + 2;
 
 	token->type = TOK_NUMBER;
 	token->attr = result;

@@ -1,25 +1,26 @@
 #ifndef BMATH_CONVERSIONS_H
 #define BMATH_CONVERSIONS_H
 
-#include <ctype.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <unistd.h>
 
 #include "shim.h"
 
-static bool str_hex_to_uint64(const char *input, size_t input_length,
-			      uint64_t *result)
+static ssize_t str_hex_to_uint64(const char *input, ssize_t input_length,
+				 uint64_t *result)
 {
 	char current_char;
+	ssize_t bytes_parsed = 0;
 
 	const char *input_start = input;
 	const char *input_end = input + input_length;
 
 	if (*input_start++ != '0')
-		return false;
+		return 0;
 
 	if (!(*input_start == 'x' || *input_start == 'X'))
-		return false;
+		return 0;
 
 	input_start++;
 
@@ -29,7 +30,7 @@ static bool str_hex_to_uint64(const char *input, size_t input_length,
 		current_char = *input_start++;
 
 		if (!__ishexnumber(current_char))
-			return false;
+			return bytes_parsed;
 
 		*result = *result << 4;
 		if (__isdigit(current_char)) {
@@ -43,9 +44,14 @@ static bool str_hex_to_uint64(const char *input, size_t input_length,
 		}
 
 		*result = *result + temp;
+		bytes_parsed++;
+
+		if (bytes_parsed == input_length)
+			return bytes_parsed;
+
 	} while (input_start != input_end);
 
-	return true;
+	return bytes_parsed;
 }
 
 #endif
