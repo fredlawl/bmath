@@ -1,3 +1,4 @@
+#include "argp.h"
 #include <iconv.h>
 #include <inttypes.h>
 #include <locale.h>
@@ -6,6 +7,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "argp_config.h"
@@ -190,25 +192,121 @@ static void print_number(uint64_t num, bool uppercase_hex)
 	}
 }
 
-int evaluate(const char *input)
+int evaluate(const char *input, size_t len, bool print_expr)
 {
 	uint64_t output = 0;
-	int result = parse(input, &output);
-	if (result) {
-		// notify error...
-		return EXIT_FAILURE;
+	int err = parse(input, len, &output);
+	if (err) {
+		switch (err) {
+		case PE_NOTHING_TO_PARSE:
+			fputs("Nothing to parse.\n", stderr);
+			break;
+		case PE_EXPRESSION_TOO_LONG:
+			fputs("Expression too long.\n", stderr);
+			break;
+		case PE_PARSE_ERROR:
+			fputs("Parse error ocurred.\n", stderr);
+			break;
+		default:
+			fputs("Unknown error ocurred.\n", stderr);
+		}
+		return err;
 	}
 
+	if (print_expr) {
+		puts(input);
+	}
 	print_number(output, uppercaseHex);
+	return err;
+}
+
+static int do_readline()
+{
+	char *input;
+
+	while (true) {
+		input = readline("expr> ");
+
+		if (!input)
+			break;
+
+		if (strcasecmp(input, "exit") == 0 ||
+		    strcasecmp(input, "quit") == 0) {
+			break;
+		}
+
+		add_history(input);
+		evaluate(input, strlen(input), false);
+		fflush(stdout);
+
+		free(input);
+	}
+
+	free(input);
+	return EXIT_SUCCESS;
+}
+
+static int do_stdin()
+{
+#define BUF_SIZE 4096
+	ssize_t bytes_read = 0;
+	ssize_t expr_index = 0;
+	char expr[P_MAX_EXP_LEN] = { 0 };
+
+	do {
+		char read_buff[BUF_SIZE] = { 0 };
+		ssize_t buff_index = 0;
+
+		bytes_read = read(STDIN_FILENO, read_buff, sizeof(read_buff));
+		if (bytes_read < 0) {
+			perror("do_stdin() error reading line");
+			return EXIT_FAILURE;
+		}
+
+		if (bytes_read == 0)
+			break;
+
+		while (buff_index < bytes_read) {
+			if (unlikely(expr_index > P_MAX_EXP_LEN)) {
+				fputs("Attempted input buffer overflow. Skipping.\n",
+				      stderr);
+				memset(expr, '\0', P_MAX_EXP_LEN);
+				expr_index = 0;
+				while (buff_index++ < bytes_read &&
+				       read_buff[buff_index] != '\n')
+					;
+				buff_index++;
+				continue;
+			}
+
+			if (read_buff[buff_index] == '\n') {
+				evaluate(expr, expr_index, true);
+				puts("");
+				memset(expr, '\0', expr_index);
+				expr_index = 0;
+				buff_index++;
+				continue;
+			}
+
+			expr[expr_index] = read_buff[buff_index];
+			expr_index++;
+			buff_index++;
+		}
+
+	} while (bytes_read > 0);
+
+	fflush(stdout);
+
 	return EXIT_SUCCESS;
 }
 
 int main(int argc, char *argv[])
 {
+	char stdout_buff[4096] = { 0 };
+	setvbuf(stdout, stdout_buff, _IOFBF, sizeof(stdout_buff));
 	setlocale(LC_CTYPE, "en_US.UTF-8");
 
 	struct arguments arguments;
-	char *input;
 
 	arguments.detached_expr = NULL;
 	arguments.should_uppercase_hex = false;
@@ -231,27 +329,15 @@ int main(int argc, char *argv[])
 	}
 
 	if (arguments.detached_expr) {
-		return evaluate(arguments.detached_expr);
+		int err = evaluate(arguments.detached_expr,
+				   strlen(arguments.detached_expr), false);
+		fflush(stdout);
+		return err;
 	}
 
-	while (true) {
-		input = readline("expr> ");
-
-		if (!input)
-			break;
-
-		if (strcasecmp(input, "exit") == 0 ||
-		    strcasecmp(input, "quit") == 0) {
-			break;
-		}
-
-		add_history(input);
-		evaluate(input);
-
-		free(input);
+	if (isatty(0)) {
+		return do_readline();
 	}
 
-	free(input);
-
-	return EXIT_SUCCESS;
+	return do_stdin();
 }

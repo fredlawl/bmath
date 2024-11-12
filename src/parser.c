@@ -2,7 +2,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <string.h>
 #include <errno.h>
 
 #include "conversions.h"
@@ -84,29 +83,26 @@ static uint64_t __perform_parse(struct lexer *lexer)
 	return __expr(lexer);
 }
 
-int parse(const char *infix_expression, uint64_t *out_result)
+int parse(const char *infix_expression, size_t len, uint64_t *out_result)
 {
-	size_t infix_expression_length;
 	struct lexer lexer;
 	uint64_t result;
 
 	*out_result = 0;
 
-	infix_expression_length = strlen(infix_expression);
-	if (infix_expression_length == 0)
-		return -PE_NOTHING_TO_PARSE;
+	if (len == 0)
+		return PE_NOTHING_TO_PARSE;
 
-	if (infix_expression_length > (size_t)INT16_MAX)
-		return -PE_EXPRESSION_TOO_LONG;
+	if (len > (size_t)P_MAX_EXP_LEN)
+		return PE_EXPRESSION_TOO_LONG;
 
-	lexer = __init_lexer(infix_expression,
-			     (int16_t)infix_expression_length);
+	lexer = __init_lexer(infix_expression, (int16_t)len);
 
 	result = __perform_parse(&lexer);
 
 	if (liberror) {
 		liberror = false;
-		return -PE_PARSE_ERROR;
+		return PE_PARSE_ERROR;
 	}
 
 	*out_result = result;
@@ -181,15 +177,15 @@ static void __lexer_parse_hex(struct lexer *lexer, struct token *token)
 	size_t bytes_parsed = str_hex_to_uint64(start, MAX_HEX_STR, &result);
 	if (bytes_parsed == 0) {
 		if (errno == EOVERFLOW) {
-			__lexical_error(lexer, "exceeded 8 bytes");
+			__lexical_error(lexer, "Hex exceeds 8 bytes");
 			return;
 		}
 
-		__lexical_error(lexer, "invalid hex");
+		__lexical_error(lexer, "Invalid hex");
 		return;
 	}
 
-	lexer->line += bytes_parsed;
+	lexer->current_column += bytes_parsed;
 
 	token->type = TOK_NUMBER;
 	token->attr = result;
@@ -214,7 +210,13 @@ static struct token __lexer_get_next_token(struct lexer *lexer)
 	while ((current_character = *line_reader++) != '\0') {
 		peek_character = *line_reader;
 
-		if (isspace(current_character)) {
+		// if (isspace(current_character)) {
+		//	lexer->current_column++;
+		//	continue;
+		//}
+
+		if (current_character == ' ' || current_character == '\t' ||
+		    current_character == '\n' || current_character == '\r') {
 			lexer->current_column++;
 			continue;
 		}
@@ -301,8 +303,8 @@ static void __expect(struct lexer *lex, enum token_type expected)
 		return;
 	}
 
-	__general_error("Expecting token %d, but got %d instead.\n", expected,
-			lookahead_token.type);
+	__lexical_error(lex, "Expecting token %d, but got %d instead.",
+			expected, lookahead_token.type);
 }
 
 static uint64_t __factor(struct lexer *lexer)

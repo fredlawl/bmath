@@ -52,7 +52,7 @@ static size_t str_hex_to_uint64(const char *input, ssize_t input_length,
 		bytes_parsed++;
 
 		if (bytes_parsed > input_length) {
-			errno = EOVERFLOW;
+			errno = E2BIG;
 			return 0;
 		}
 
