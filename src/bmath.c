@@ -280,8 +280,10 @@ static int do_stdin()
 			}
 
 			if (read_buff[buff_index] == '\n') {
-				evaluate(expr, expr_index, true);
-				puts("");
+				int err = evaluate(expr, expr_index, true);
+				if (!err) {
+					puts("");
+				}
 				memset(expr, '\0', expr_index);
 				expr_index = 0;
 				buff_index++;
