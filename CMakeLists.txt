@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(bmath VERSION 1.0.0 LANGUAGES C)
+project(bmath VERSION 1.0.1 LANGUAGES C)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG")
@@ -10,6 +10,11 @@ set(CMAKE_CXX_COMPILER g++)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -Wall -Wshadow -Wextra -Wvla -Wmissing-field-initializers -fno-omit-frame-pointer")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin/usr/bin)
+
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/version.h"
+)
 
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     include_directories("/usr/include" "/usr/local/include")

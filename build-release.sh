@@ -1,12 +1,13 @@
 #!/bin/sh -e
 
-# rm CMakeCache.txt
-# debuild -us -uc
+VERSION=$(grep -Po "^project\(.*VERSION\s\K[0-9]+\.[0-9]+\.[0-9]+" CMakeLists.txt | tr -d "\n")
+
+./build.sh
 
 fpm \
     -s dir \
     -t deb \
-    -v 1.0.0 \
+    -v $VERSION \
     -n bmath \
     -a amd64 \
     -m "Frederick Lawler <me@fred.software>" \

@@ -5,11 +5,12 @@
 #include <strings.h>
 
 #include "argp.h"
+#include "version.h"
 
 #ifdef VERSION
 const char *argp_program_version = VERSION;
 #else
-const char *argp_program_version = "1.0.0";
+const char *argp_program_version = "invalid";
 #endif
 
 const char *argp_program_bug_address = "Frederick Lawler <fred@fredlawl.com>";
