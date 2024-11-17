@@ -303,8 +303,10 @@ static void __expect(struct lexer *lex, enum token_type expected)
 		return;
 	}
 
-	__lexical_error(lex, "Expecting token %d, but got %d instead.",
-			expected, lookahead_token.type);
+	if (!liberror) {
+		__lexical_error(lex, "Expecting token %d, but got %d instead.",
+				expected, lookahead_token.type);
+	}
 }
 
 static uint64_t __factor(struct lexer *lexer)
