@@ -222,3 +222,6 @@ out.perf
 flamegraph.svg
 perf.folded
 test-input
+dbg
+*.debug
+*.deb
