@@ -15,7 +15,9 @@ mkdir -p dbg/usr/lib/debug/usr/bin
 objcopy --only-keep-debug $BINARY $DEBUG_BINARY
 strip --strip-debug --strip-unneeded $BINARY
 objcopy --add-gnu-debuglink=$DEBUG_BINARY $BINARY
-
+# https://github.com/Debian/debhelper/blob/master/dh_strip#L291
+# just awk out the build-id to have debug symbols across multiple versions, but gdb still works
+# as is.
 rm -f $PKG $PKG_DBG
 
 fpm \
