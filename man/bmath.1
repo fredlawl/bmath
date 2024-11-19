@@ -1,0 +1,77 @@
+./" Manpage for bmath
+.TH man 1 "10 September 2024" "1.0.1" "bmath man page"
+.SH NAME
+bmath
+.SH SYNOPSIS
+.B bmath
+[\fI\,OPTION\/\fR...]
+.SH DESCRIPTION
+bmath prints the result of some bitwise \fI\,EXPRESSION\/\fR. These are parsed
+through  \fB\-d\fR ( \fB\-\-detached\fR), \fBstdin\fR, or \fBinteractive\fR modes.
+.SH OPTIONS
+.TP
+\fB\-b\fR, \fB\-\-binary\fR
+Print the result in binary
+.TP
+\fB\-d\fR, \fB\-\-detached\fR=\fI\,EXPRESSION\/\fR
+Execute single expression
+.TP
+\fB\-\-unicode\fR
+Print unicode characters
+.TP
+\fB\-u\fR, \fB\-\-uppercase\fR
+Uppercase hex output
+.TP
+\-?, \fB\-\-help\fR
+Give this help list
+.TP
+\fB\-\-usage\fR
+Give a short usage message
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Print program version
+
+.SH EXPRESSIONS
+.TP
+expr
+= expr, op, term
+| term ;
+.TP
+term = term, shift_op, factor
+| factor ;
+.TP
+factor = number
+  | lparen, expr, rparen
+  | negate, factor ;
+.TP
+number = digit, { digit }
+  | hex ;
+.TP
+digit = [0\-9], { [0\-9] } ;
+.TP
+hex = "0x", [0\-9a\-fA\-F], { [0\-9a\-fA\-F] } ;
+.TP
+shift_op = "<<" | ">>" ;
+.TP
+op = "^" | "|" | "&" ;
+.TP
+lparen = "(" ;
+.TP
+rparen = ")" ;
+.TP
+negate = "~" ;
+.SH EXAMPLES
+.TP
+bmath -d "0xa"
+\   u64: 10
+\    i8: 10
+  char: <special>
+   Hex: 0xa
+ Hex16: 0x000a
+ Hex32: 0x0000000a
+ Hex64: 0x000000000000000a
+
+.SH AUTHOR
+Written by Frederick Lawler
+.SH REPORTING BUGS
+Report any bugs to <https://github.com/fredlawl/bmath>
