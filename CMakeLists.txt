@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.10)
 
 project(bmath VERSION 1.0.2 LANGUAGES C)
 
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Debug") 
+endif()
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_C_FLAGS_RELEASE "-Wl,--build-id -O3 -DNDEBUG")
 
@@ -9,7 +13,9 @@ set(CMAKE_C_COMPILER gcc)
 set(CMAKE_CXX_COMPILER g++)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -Wall -Wshadow -Wextra -Wvla -Wmissing-field-initializers -fno-omit-frame-pointer")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin/usr/bin)
+set(CMAKE_BINARY_DIR "${PROJECT_SOURCE_DIR}/bin")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/release")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/debug")
 
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in"
@@ -54,8 +60,10 @@ add_executable(${PROJECT_NAME} src/bmath.c ${SRC_FILES})
 target_link_libraries(${PROJECT_NAME} ${LIBRARIES})
 
 if (CRITERION_LIBRARY)
-	set(SRC_FILES ${SRC_FILES} test/conversions.c test/parser.c)
-	add_executable(${PROJECT_NAME}_test ${SRC_FILES})
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG}/test)
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE}/test)
+  set(SRC_FILES ${SRC_FILES} test/conversions.c test/parser.c)
+  add_executable(${PROJECT_NAME}_test ${SRC_FILES})
 	target_link_libraries(${PROJECT_NAME}_test ${TEST_LIBRARIES})
 endif()
 

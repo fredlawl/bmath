@@ -6,20 +6,22 @@ VERSION=$(grep -Po "^project\(.*VERSION\s\K[0-9]+\.[0-9]+\.[0-9]+" CMakeLists.tx
 
 PKG=$(realpath "bmath_$VERSION"*.deb)
 PKG_DBG=$(realpath "bmath-dbg_$VERSION"*.deb)
-BINARY="bin/usr/bin/bmath"
+BINARY="bin/release/bmath"
 BUILD_ID=$(readelf -n "$BINARY" | grep -Po 'Build ID:\s\K[0-9a-zA-Z]+')
 BUILD_ID_START=${BUILD_ID:0:2}
 BUILD_ID=${BUILD_ID:2}
 DEBUG_BINARY="dbg/usr/lib/debug/.build-id/$BUILD_ID_START/$BUILD_ID.debug"
+RELEASE_BINARY="release/usr/local/bin/bmath"
 
-rm -rf dbg
-mkdir -p $(dirname "$DEBUG_BINARY")
+rm -rf dbg release
+mkdir -p $(dirname "$DEBUG_BINARY") $(dirname "$RELEASE_BINARY")
 
 objcopy --only-keep-debug "$BINARY" "$DEBUG_BINARY"
 strip --strip-debug --strip-unneeded "$BINARY"
 objcopy --add-gnu-debuglink="$DEBUG_BINARY" "$BINARY"
 chmod -x "$DEBUG_BINARY"
 rm -f "$PKG" "$PKG_DBG"
+cp "$BINARY" "$RELEASE_BINARY"
 
 fpm \
   -s dir \
@@ -34,7 +36,7 @@ fpm \
   -d "libncurses6" \
   -d "libc6 >= 2.15" \
   -d "libtinfo6" \
-  -C bin \
+  -C release \
   .
 
 fpm \
