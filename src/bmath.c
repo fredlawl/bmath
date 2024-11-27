@@ -104,21 +104,24 @@ static void print_binary(uint64_t number)
 	uint64_t counter = 64;
 	// (bytes * bits per byte) + 2 newlines + 8 spaces + 1 null
 	char buff[(sizeof(number) * 8) + 2 + 8 + 1] = { 0 };
+
+	// Print table can be pre-allocated
+	buff[8] = ' ';
+	buff[16 + 1] = ' ';
+	buff[24 + 2] = ' ';
+	buff[32 + 3] = '\n';
+	buff[40 + 4] = ' ';
+	buff[48 + 5] = ' ';
+	buff[56 + 6] = ' ';
+	buff[64 + 7] = '\n';
+
 	int i = 0;
 	while (counter > 0) {
-		mask = (uint64_t)1 << (counter - 1);
-		if ((counter % 8) == 0) {
-			buff[i] = ' ';
-			i++;
-		}
+		i += buff[i] != 0;
+		mask = (uint64_t)1 << (--counter);
 		// ascii 0 = 48
 		buff[i] = ((number & mask) == mask) + 48;
 		i++;
-		counter--;
-		if ((counter % 32) == 0) {
-			buff[i] = '\n';
-			i++;
-		}
 	}
 
 	fwrite(buff, sizeof(buff), 1, stdout);

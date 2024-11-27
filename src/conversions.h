@@ -41,11 +41,10 @@ static size_t str_hex_to_uint64(const char *input, ssize_t input_length,
 		if (__isdigit(current_char)) {
 			temp = current_char - '0';
 		} else {
-			current_char =
-				(current_char >= 'A' && current_char <= 'F') ?
-					current_char :
-					(char)(current_char - 32);
-			temp = (current_char - 'A') + 10;
+			temp = (current_char >= 'A' && current_char <= 'F') ?
+				       current_char :
+				       (char)(current_char - 32);
+			temp = (temp - 'A') + 10;
 		}
 
 		*result = *result + temp;
