@@ -100,10 +100,9 @@ static void print_unicode(uint64_t num, bool uppercase_hex,
 
 static void print_binary(uint64_t number)
 {
-	uint64_t mask;
-	uint64_t counter = 64;
-	// (bytes * bits per byte) + 2 newlines + 8 spaces + 1 null
-	char buff[(sizeof(number) * 8) + 2 + 8 + 1] = { 0 };
+	// (bytes * bits per byte) + 2 newlines + 6 spaces + 1 null
+	char buff[(sizeof(number) * 8) + 8 + 1] = { 0 };
+	memset(buff, '0', sizeof(buff) - 1);
 
 	// Print table can be pre-allocated
 	buff[8] = ' ';
@@ -115,12 +114,11 @@ static void print_binary(uint64_t number)
 	buff[56 + 6] = ' ';
 	buff[64 + 7] = '\n';
 
-	int i = 0;
-	while (counter > 0) {
-		i += buff[i] != 0;
-		mask = (uint64_t)1 << (--counter);
-		// ascii 0 = 48
-		buff[i] = ((number & mask) == mask) + 48;
+	int i = 2;
+	while (number) {
+		i += buff[sizeof(buff) - i] != '0';
+		buff[sizeof(buff) - i] = (number & 0x1) + '0';
+		number >>= 1;
 		i++;
 	}
 
