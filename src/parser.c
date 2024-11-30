@@ -1,13 +1,11 @@
-#include <ctype.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <errno.h>
 
-#include "conversions.h"
 #include "parser.h"
-#include "shim.h"
 #include "util.h"
+#include "lookup_tables.h"
 
 static bool liberror = false;
 
@@ -61,10 +59,8 @@ struct lexer {
 // fixable global variable
 static struct token lookahead_token;
 
-static inline bool __is_operator(char character);
 static inline bool __is_x(char character);
 static inline bool __is_start_of_hex(char current_character, char peek);
-static inline bool __is_allowed_character(char character);
 static inline bool __is_illegal_character(char character);
 
 static struct lexer __init_lexer(const char *line, int16_t line_length);
@@ -76,6 +72,45 @@ static void __expect(struct lexer *lexer, enum token_type expected);
 static uint64_t __factor(struct lexer *lexer);
 static uint64_t __term(struct lexer *lexer);
 static uint64_t __expr(struct lexer *lexer);
+
+static size_t str_hex_to_uint64(const char *input, ssize_t input_length,
+				uint64_t *result)
+{
+	char current_char;
+	ssize_t bytes_parsed = 0;
+
+	const char *input_start = input;
+
+	if (*input_start++ != '0') {
+		errno = EINVAL;
+		return bytes_parsed;
+	}
+
+	if (!__is_x(*input_start)) {
+		errno = EINVAL;
+		return bytes_parsed;
+	}
+
+	input_start++;
+	bytes_parsed += 2;
+
+	*result = 0;
+	do {
+		current_char = *input_start++;
+
+		if (!__is_allowed_hex(current_char))
+			return bytes_parsed;
+
+		*result = (*result << 4) + __hex_to_value(current_char);
+	} while (bytes_parsed++ < input_length);
+
+	if (bytes_parsed > input_length) {
+		errno = E2BIG;
+		return 0;
+	}
+
+	return bytes_parsed;
+}
 
 static uint64_t __perform_parse(struct lexer *lexer)
 {
@@ -110,23 +145,15 @@ int parse(const char *infix_expression, size_t len, uint64_t *out_result)
 	return 0;
 }
 
-static inline bool __is_operator(char character)
-{
-	return character == '&' || character == '^' || character == '|';
-}
-
-static inline bool __is_allowed_character(char character)
-{
-	return character == '<' || character == '>' || character == '(' ||
-	       character == ')' || character == '~' ||
-	       __is_operator(character) || __is_x(character) ||
-	       __isdigit(character) || __ishexnumber(character) ||
-	       isspace(character);
-}
-
 static inline bool __is_x(char character)
 {
-	return character == 'x' || character == 'X';
+	switch (character) {
+	case 'x':
+	case 'X':
+		return true;
+	default:
+		return false;
+	}
 }
 
 static inline bool __is_start_of_hex(char current_character, char peek)
@@ -157,8 +184,7 @@ static void __lexer_parse_number(struct lexer *lexer, struct token *token)
 	uint64_t result = 0;
 	const char *line_reader = lexer->line + lexer->current_column;
 
-	while ((current_char = *line_reader++) != '\0' &&
-	       __isdigit(current_char)) {
+	while ((current_char = *line_reader++) && __is_digit(current_char)) {
 		result = result * 10 + (current_char - '0');
 		lexer->current_column++;
 	}
@@ -207,39 +233,59 @@ static struct token __lexer_get_next_token(struct lexer *lexer)
 		return token;
 	}
 
-	while ((current_character = *line_reader++) != '\0') {
+	while ((current_character = *line_reader++)) {
 		peek_character = *line_reader;
 
-		// if (isspace(current_character)) {
-		//	lexer->current_column++;
-		//	continue;
-		//}
+		if (__is_digit(current_character)) {
+			if (__is_start_of_hex(current_character,
+					      peek_character)) {
+				__lexer_parse_hex(lexer, &token);
+			} else {
+				__lexer_parse_number(lexer, &token);
+			}
 
-		if (current_character == ' ' || current_character == '\t' ||
-		    current_character == '\n' || current_character == '\r') {
-			lexer->current_column++;
-			continue;
+			return token;
 		}
 
-		if (current_character == '~') {
+		switch (current_character) {
+		case ' ':
+		case '\n':
+		case '\t':
+		case '\r':
+			lexer->current_column++;
+			continue;
+		case '~':
 			token.type = TOK_NEGATE;
 			token.attr = ATTR_NEGATE;
 			lexer->current_column++;
 			return token;
-		}
-
-		if (current_character == '(') {
+		case '(':
 			token.type = TOK_LPAREN;
 			token.attr = ATTR_LPAREN;
 			lexer->current_column++;
 			return token;
-		}
-
-		if (current_character == ')') {
+		case ')':
 			token.type = TOK_RPAREN;
 			token.attr = ATTR_RPAREN;
 			lexer->current_column++;
 			return token;
+		case '&':
+			token.type = TOK_OP;
+			token.attr = ATTR_OP_AND;
+			lexer->current_column++;
+			return token;
+		case '|':
+			token.type = TOK_OP;
+			token.attr = ATTR_OP_OR;
+			lexer->current_column++;
+			return token;
+		case '^':
+			token.type = TOK_OP;
+			token.attr = ATTR_OP_XOR;
+			lexer->current_column++;
+			return token;
+		default:
+			break;
 		}
 
 		if (current_character == '<' && peek_character == '<') {
@@ -256,36 +302,7 @@ static struct token __lexer_get_next_token(struct lexer *lexer)
 			return token;
 		}
 
-		if (__is_operator(current_character)) {
-			token.type = TOK_OP;
-			switch (current_character) {
-			case '&':
-				token.attr = ATTR_OP_AND;
-				break;
-			case '|':
-				token.attr = ATTR_OP_OR;
-				break;
-			case '^':
-				token.attr = ATTR_OP_XOR;
-				break;
-			default:
-				break;
-			}
-			lexer->current_column++;
-			return token;
-		}
-
-		if (__is_start_of_hex(current_character, peek_character)) {
-			__lexer_parse_hex(lexer, &token);
-			return token;
-		}
-
-		if (__isdigit(current_character)) {
-			__lexer_parse_number(lexer, &token);
-			return token;
-		}
-
-		if (__is_illegal_character(current_character)) {
+		if (unlikely(__is_illegal_character(current_character))) {
 			__lexical_error(lexer, "Illegal character");
 			return token;
 		}

@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include "shim.h"
+#include "lookup_tables.h"
 
 static size_t str_hex_to_uint64(const char *input, ssize_t input_length,
 				uint64_t *result)
@@ -21,7 +21,11 @@ static size_t str_hex_to_uint64(const char *input, ssize_t input_length,
 		return bytes_parsed;
 	}
 
-	if (!(*input_start == 'x' || *input_start == 'X')) {
+	switch (*input_start) {
+	case 'x':
+	case 'X':
+		break;
+	default:
 		errno = EINVAL;
 		return bytes_parsed;
 	}
@@ -31,31 +35,19 @@ static size_t str_hex_to_uint64(const char *input, ssize_t input_length,
 
 	*result = 0;
 	do {
-		uint64_t temp;
 		current_char = *input_start++;
 
-		if (!__ishexnumber(current_char))
+		if (!__is_allowed_hex(current_char))
 			return bytes_parsed;
 
-		*result = *result << 4;
-		if (__isdigit(current_char)) {
-			temp = current_char - '0';
-		} else {
-			temp = (current_char >= 'A' && current_char <= 'F') ?
-				       current_char :
-				       (char)(current_char - 32);
-			temp = (temp - 'A') + 10;
-		}
+		*result = (*result << 4) + __hex_to_value(current_char);
 
-		*result = *result + temp;
-		bytes_parsed++;
+	} while (bytes_parsed++ < input_length);
 
-		if (bytes_parsed > input_length) {
-			errno = E2BIG;
-			return 0;
-		}
-
-	} while (1);
+	if (bytes_parsed > input_length) {
+		errno = E2BIG;
+		return 0;
+	}
 
 	return bytes_parsed;
 }
