@@ -2,7 +2,7 @@
 
 if [ ! -e test-input ]; then
   echo "generating test input"
-  ./gen.py -i 1000 -s 0 >test-input
+  ./gen.py -i 1000000 -s 0 >test-input
 fi
 
 perf record -F max --call-graph=dwarf -g --all-user ./bin/release/bmath -b --unicode <test-input >/dev/null
