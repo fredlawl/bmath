@@ -124,4 +124,18 @@ gen_lookup_table(
 )
 print()
 
+# hex terminator
+gen_lookup_table(
+    "lookup_is_hex_terminator",
+    "__is_hex_terminator",
+    gen_table(
+        lambda i: i == ord(" ")
+        or i == ord("\t")
+        or i == ord("\n")
+        or i == ord("\r")
+        or i == 0
+    ),
+)
+print()
+
 print("#endif")

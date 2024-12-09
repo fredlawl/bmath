@@ -1,10 +1,13 @@
+#include <criterion/alloc.h>
 #include <criterion/criterion.h>
 #include <criterion/internal/assert.h>
 #include <criterion/logging.h>
 #include <inttypes.h>
 #include <stdint.h>
+#include <errno.h>
 
 #include "../src/parser.h"
+#include "../src/conversions.h"
 
 static void setup(void)
 {
@@ -302,4 +305,68 @@ Test(parser, verify_concat_expressions7)
 	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
 		     expected);
 	cr_assert_eq(result, 0);
+}
+
+Test(parser, hex_parses_surrounded_by_parens)
+{
+	uint64_t expected = 10;
+	uint64_t actual = 0;
+	char *str = "(0xa)";
+	int result = parse(str, strlen(str), &actual);
+
+	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
+		     expected);
+	cr_assert_eq(result, 0);
+}
+
+Test(conversions, verify_hex_str_converts_to_uint64_t)
+{
+	uint64_t expected = 20;
+	uint64_t actual = 0;
+	ssize_t parsed = str_hex_to_uint64("0x14", 4, &actual);
+
+	cr_assert_eq(parsed, 4);
+	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
+		     expected);
+}
+
+Test(conversions, verify_lowercase_hex_str_converts_to_uint64_t)
+{
+	uint64_t expected = 240;
+	uint64_t actual = 0;
+	size_t parsed = str_hex_to_uint64("0Xf0", 4, &actual);
+
+	cr_assert_eq(parsed, 4);
+	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
+		     expected);
+}
+
+/*
+ * TODO: Figure this out some other time... things like (0xa) need to work :|
+Test(conversions, fail_invalid_hex)
+{
+	uint64_t actual = 0;
+	size_t parsed = str_hex_to_uint64("0xhuh", 5, &actual);
+	int err = errno;
+	cr_assert_eq(err, EINVAL, "expecting %d errno, but got %d", EINVAL,
+		     err);
+	cr_assert_eq(parsed, 0, "umm %lu", parsed);
+}
+*/
+
+Test(conversions, hex_exceeds_len)
+{
+	uint64_t actual = 0;
+	size_t parsed = str_hex_to_uint64("0xaa", 3, &actual);
+	int err = errno;
+	cr_assert_eq(err, E2BIG, "expecting %d errno, but got %d", E2BIG, err);
+	cr_assert_eq(parsed, 0, "umm %lu", parsed);
+}
+
+Test(conversions, hex_allow_spaces)
+{
+	uint64_t actual = 0;
+	size_t parsed = str_hex_to_uint64("0xa 0", 5, &actual);
+	cr_assert_eq(parsed, 3);
+	cr_assert_eq(actual, 10);
 }

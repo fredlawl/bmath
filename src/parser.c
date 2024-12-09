@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <errno.h>
 
+#include "conversions.h"
 #include "parser.h"
 #include "util.h"
 #include "lookup_tables.h"
@@ -73,8 +74,8 @@ static uint64_t __factor(struct lexer *lexer);
 static uint64_t __term(struct lexer *lexer);
 static uint64_t __expr(struct lexer *lexer);
 
-static size_t str_hex_to_uint64(const char *input, ssize_t input_length,
-				uint64_t *result)
+size_t str_hex_to_uint64(const char *input, ssize_t input_length,
+			 uint64_t *result)
 {
 	char current_char;
 	ssize_t bytes_parsed = 0;
@@ -86,20 +87,20 @@ static size_t str_hex_to_uint64(const char *input, ssize_t input_length,
 		return bytes_parsed;
 	}
 
-	if (!__is_x(*input_start)) {
+	if (!__is_x(*input_start++)) {
 		errno = EINVAL;
 		return bytes_parsed;
 	}
 
-	input_start++;
 	bytes_parsed += 2;
 
 	*result = 0;
 	do {
 		current_char = *input_start++;
 
-		if (!__is_allowed_hex(current_char))
+		if (!__is_allowed_hex(current_char)) {
 			return bytes_parsed;
+		}
 
 		*result = (*result << 4) + __hex_to_value(current_char);
 	} while (bytes_parsed++ < input_length);
