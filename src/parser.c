@@ -27,14 +27,26 @@ static bool liberror = false;
 	} while (0)
 
 enum token_type {
-	TOK_NUMBER = 1,
+	TOK_NULL = 0,
+	TOK_NUMBER,
 	TOK_OP,
 	TOK_SHIFT_OP,
 	TOK_LPAREN,
 	TOK_RPAREN,
 	TOK_NEGATE,
-	TOK_NULL
 };
+
+static const char *lookup_token_name[] = {
+	[TOK_NULL] = "null",	 [TOK_NUMBER] = "number",
+	[TOK_OP] = "&, |, or ^", [TOK_SHIFT_OP] = "<<, or >>",
+	[TOK_LPAREN] = "(",	 [TOK_RPAREN] = ")",
+	[TOK_NEGATE] = "~",
+};
+
+static inline const char *token_name(enum token_type tok)
+{
+	return lookup_token_name[tok];
+}
 
 #define ATTR_LPAREN 1
 #define ATTR_RPAREN ATTR_LPAREN + 1
@@ -322,8 +334,9 @@ static void __expect(struct lexer *lex, enum token_type expected)
 	}
 
 	if (!liberror) {
-		__lexical_error(lex, "Expecting token %d, but got %d instead.",
-				expected, lookahead_token.type);
+		__lexical_error(lex, "Expecting a %s, but got %s instead.",
+				token_name(expected),
+				token_name(lookahead_token.type));
 	}
 }
 
