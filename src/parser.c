@@ -77,8 +77,8 @@ static inline bool __is_start_of_hex(char current_character, char peek);
 static inline bool __is_illegal_character(char character);
 
 static struct lexer __init_lexer(const char *line, int16_t line_length);
-static void __lexer_parse_number(struct lexer *lexer, struct token *token);
-static void __lexer_parse_hex(struct lexer *lexer, struct token *token);
+static struct token __lexer_parse_number(struct lexer *lexer);
+static struct token __lexer_parse_hex(struct lexer *lexer);
 static struct token __lexer_get_next_token(struct lexer *lexer);
 
 static void __expect(struct lexer *lexer, enum token_type expected);
@@ -190,9 +190,10 @@ static struct lexer __init_lexer(const char *line, int16_t line_length)
 	return lexer;
 }
 
-static void __lexer_parse_number(struct lexer *lexer, struct token *token)
+static struct token __lexer_parse_number(struct lexer *lexer)
 {
 	char current_char;
+	struct token tok = { .type = TOK_NULL, .attr = ATTR_NULL };
 
 	uint64_t result = 0;
 	const char *line_reader = lexer->line + lexer->current_column;
@@ -202,32 +203,35 @@ static void __lexer_parse_number(struct lexer *lexer, struct token *token)
 		lexer->current_column++;
 	}
 
-	token->type = TOK_NUMBER;
-	token->attr = result;
+	tok.type = TOK_NUMBER;
+	tok.attr = result;
+	return tok;
 }
 
-static void __lexer_parse_hex(struct lexer *lexer, struct token *token)
+static struct token __lexer_parse_hex(struct lexer *lexer)
 {
 	// 8 bytes for 64bit number + 0x
 #define MAX_HEX_STR 16 + 2
 	uint64_t result = 0;
 	const char *start = lexer->line + lexer->current_column;
+	struct token tok = { .type = TOK_NULL, .attr = ATTR_NULL };
 
 	size_t bytes_parsed = str_hex_to_uint64(start, MAX_HEX_STR, &result);
 	if (bytes_parsed == 0) {
 		if (errno == EOVERFLOW) {
 			__lexical_error(lexer, "Hex exceeds 8 bytes");
-			return;
+			return tok;
 		}
 
 		__lexical_error(lexer, "Invalid hex");
-		return;
+		return tok;
 	}
 
 	lexer->current_column += bytes_parsed;
 
-	token->type = TOK_NUMBER;
-	token->attr = result;
+	tok.type = TOK_NUMBER;
+	tok.attr = result;
+	return tok;
 }
 
 static struct token __lexer_get_next_token(struct lexer *lexer)
@@ -252,12 +256,10 @@ static struct token __lexer_get_next_token(struct lexer *lexer)
 		if (__is_digit(current_character)) {
 			if (__is_start_of_hex(current_character,
 					      peek_character)) {
-				__lexer_parse_hex(lexer, &token);
+				return __lexer_parse_hex(lexer);
 			} else {
-				__lexer_parse_number(lexer, &token);
+				return __lexer_parse_number(lexer);
 			}
-
-			return token;
 		}
 
 		switch (current_character) {
