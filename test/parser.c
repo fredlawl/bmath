@@ -9,6 +9,17 @@
 #include "../src/parser.h"
 #include "../src/conversions.h"
 
+#define expr_assert_eq(str, actual, expected)                                 \
+	do {                                                                  \
+		cr_assert_eq(actual, expected, "%s\n%" PRIu64 " == %" PRIu64, \
+			     str, actual, expected);                          \
+		\ 
+ 	                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        \
+	} while (0);
+
+#define expr_assert(str, condition) \
+	cr_assert_eq(condition, 1, "%s\n%s", str, #condition);
+
 static void setup(void)
 {
 }
@@ -163,8 +174,7 @@ Test(parser, verify_combination)
 	char *str = "(1 | 3) | (1 | 3)";
 	int result = parse(str, strlen(str), &actual);
 
-	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-		     expected);
+	expr_assert_eq(str, actual, expected);
 	cr_assert_eq(result, 0);
 }
 
@@ -175,8 +185,7 @@ Test(parser, verify_left_shift)
 	char *str = "(1 | 3) << (1 | 3)";
 	int result = parse(str, strlen(str), &actual);
 
-	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-		     expected);
+	expr_assert_eq(str, actual, expected);
 	cr_assert_eq(result, 0);
 }
 
@@ -187,8 +196,7 @@ Test(parser, verify_order_of_operations)
 	char *str = "1 | 3 << 1 | 3";
 	int result = parse(str, strlen(str), &actual);
 
-	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-		     expected);
+	expr_assert_eq(str, actual, expected);
 	cr_assert_eq(result, 0);
 }
 
@@ -196,20 +204,21 @@ Test(parser, verify_things_break)
 {
 	uint64_t expected = 0;
 	uint64_t actual = 0;
-	int result = parse("1 || 3", 6, &actual);
-	cr_assert(result == PE_PARSE_ERROR);
-	cr_assert(actual == expected);
+	char *str = "1 || 3";
+	int result = parse(str, strlen(str), &actual);
+	expr_assert(str, result == PE_PARSE_ERROR);
+	expr_assert(str, actual == expected);
 }
 
 Test(parser, verify_negation_with_paren)
 {
 	uint64_t expected = ~0;
 	uint64_t actual = 0;
-	int result = parse("~(0)", 4, &actual);
+	char *str = "~(0)";
+	int result = parse(str, strlen(str), &actual);
 
-	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-		     expected);
-	cr_assert_eq(result, 0);
+	expr_assert_eq(str, actual, expected);
+	expr_assert_eq(str, result, 0);
 }
 
 Test(parser, verify_negation_without_paren)
@@ -230,8 +239,7 @@ Test(parser, verify_concat_expressions1)
 	char *str = "(1 << 0) | (1 << 1)";
 	int result = parse(str, strlen(str), &actual);
 
-	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-		     expected);
+	expr_assert_eq(str, actual, expected);
 	cr_assert_eq(result, 0);
 }
 
@@ -242,8 +250,7 @@ Test(parser, verify_concat_expressions2)
 	char *str = "0x1 | 0x2 | 0x4 | 0x8";
 	int result = parse(str, strlen(str), &actual);
 
-	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-		     expected);
+	expr_assert_eq(str, actual, expected);
 	cr_assert_eq(result, 0);
 }
 
@@ -254,8 +261,7 @@ Test(parser, verify_concat_expressions3)
 	char *str = "(1 << 0) | (1 << 1) | (1 << 2) | (1 << 3)";
 	int result = parse(str, strlen(str), &actual);
 
-	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-		     expected);
+	expr_assert_eq(str, actual, expected);
 	cr_assert_eq(result, 0);
 }
 
@@ -266,8 +272,7 @@ Test(parser, verify_concat_expressions4)
 	char *str = "(((1 << 0) | (1 << 1)) | (1 << 2)) | (1 << 3)";
 	int result = parse(str, strlen(str), &actual);
 
-	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-		     expected);
+	expr_assert_eq(str, actual, expected);
 	cr_assert_eq(result, 0);
 }
 
@@ -278,8 +283,7 @@ Test(parser, verify_concat_expressions5)
 	char *str = "(1 << 0) & 0x01";
 	int result = parse(str, strlen(str), &actual);
 
-	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-		     expected);
+	expr_assert_eq(str, actual, expected);
 	cr_assert_eq(result, 0);
 }
 
@@ -290,8 +294,7 @@ Test(parser, verify_concat_expressions6)
 	char *str = "0x01 & (1 << 0) & 0x0";
 	int result = parse(str, strlen(str), &actual);
 
-	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-		     expected);
+	expr_assert_eq(str, actual, expected);
 	cr_assert_eq(result, 0);
 }
 
@@ -302,8 +305,7 @@ Test(parser, verify_concat_expressions7)
 	char *str = "1 << 1 << 0";
 	int result = parse(str, strlen(str), &actual);
 
-	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-		     expected);
+	expr_assert_eq(str, actual, expected);
 	cr_assert_eq(result, 0);
 }
 
@@ -314,8 +316,7 @@ Test(parser, hex_parses_surrounded_by_parens)
 	char *str = "(0xa)";
 	int result = parse(str, strlen(str), &actual);
 
-	cr_assert_eq(actual, expected, "%" PRIu64 " == %" PRIu64, actual,
-		     expected);
+	expr_assert_eq(str, actual, expected);
 	cr_assert_eq(result, 0);
 }
 
