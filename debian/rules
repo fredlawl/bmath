@@ -1,0 +1,15 @@
+#!/usr/bin/make -f
+
+export PATH=/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
+#export DEB_BUILD_OPTIONS=nocheck
+
+%:
+	dh $@ --buildsystem=cmake
+
+override_dh_auto_configure:
+	dh_auto_configure -- \
+		-DCMAKE_BUILD_TYPE=Release
+	cmake .
+
+override_dh_auto_build:
+	cmake --build .

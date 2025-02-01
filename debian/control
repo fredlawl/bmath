@@ -1,0 +1,18 @@
+Source: bmath
+Priority: extra
+Section: misc
+Build-Depends: libncurses-dev, libtinfo-dev, debhelper (>= 10)
+Homepage: https://github.com/fredlawl/bmath
+Standards-Version: 4.7.0
+Maintainer: Frederick Lawler <me@fred.software>
+Description: 64bit big-endian bitwise operation calculator
+ A simple tool.
+
+Package: bmath
+Priority: optional
+Architecture: amd64
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Homepage: https://github.com/fredlawl/bmath
+Description: 64bit big-endian bitwise operation calculator
+ A simple tool.
+

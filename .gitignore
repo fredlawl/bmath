@@ -225,3 +225,7 @@ test-input
 dbg
 *.debug
 *.deb
+build
+.cache
+bmath
+bmath_test
