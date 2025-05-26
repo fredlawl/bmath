@@ -11,9 +11,9 @@ services:
   pkg-debian:
     build:
       context: .
-      dockerfile: fpm.Dockerfile
+      dockerfile: Dockerfile
     command: ./build-release.sh
-    working_dir: /work
+    working_dir: /work/build
     volumes:
-      - ./bin:/work/bin
-      - ./build-release.sh:/work/build-release.sh
+      - .:/work/build
+      - ./output:/work

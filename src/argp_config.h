@@ -1,17 +1,9 @@
-#ifndef BMATH_ARGP_CONFIG_H
-#define BMATH_ARGP_CONFIG_H
+#pragma once
 
 #include <stdbool.h>
 #include <strings.h>
 
 #include "argp.h"
-#include "version.h"
-
-#ifdef VERSION
-const char *argp_program_version = VERSION;
-#else
-const char *argp_program_version = "invalid";
-#endif
 
 const char *argp_program_bug_address = "Frederick Lawler <fred@fredlawl.com>";
 
@@ -105,5 +97,3 @@ static struct argp argp = (struct argp){ .options = options,
 					 .children = NULL,
 					 .help_filter = NULL,
 					 .argp_domain = NULL };
-
-#endif

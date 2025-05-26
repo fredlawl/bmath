@@ -1,5 +1,4 @@
-#ifndef BMATH_PARSER_H
-#define BMATH_PARSER_H
+#pragma once
 
 #include <stdint.h>
 #include <stddef.h>
@@ -11,7 +10,14 @@
 #define PE_PARSE_ERROR 2
 #define PE_NOTHING_TO_PARSE 3
 
-#define P_MAX_EXP_LEN 512
+struct parser_context;
+
+struct parser_settings {
+	int max_parse_len;
+};
+
+struct parser_context *parser_new(struct parser_settings *settings);
+int parser_free(struct parser_context *ctx);
 
 /**
  * Convert infix notation to postfix notation. This takes care of parsing
@@ -22,6 +28,5 @@
  * @return Any positive integer means successful parse; a zero
  *         or negative value corresponds with a error code
  */
-int parse(const char *infix_expression, size_t len, uint64_t *out_result);
-
-#endif
+int parse(struct parser_context *ctx, const char *infix_expression, size_t len,
+	  uint64_t *out_result);

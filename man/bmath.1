@@ -1,77 +1,106 @@
-./" Manpage for bmath
-.TH man 1 "10 September 2024" "1.0.1" "bmath man page"
-.SH NAME
-bmath
-.SH SYNOPSIS
-.B bmath
-[\fI\,OPTION\/\fR...]
-.SH DESCRIPTION
-bmath prints the result of some bitwise \fI\,EXPRESSION\/\fR. These are parsed
-through  \fB\-d\fR ( \fB\-\-detached\fR), \fBstdin\fR, or \fBinteractive\fR modes.
-.SH OPTIONS
-.TP
-\fB\-b\fR, \fB\-\-binary\fR
-Print the result in binary
-.TP
-\fB\-d\fR, \fB\-\-detached\fR=\fI\,EXPRESSION\/\fR
-Execute single expression
-.TP
-\fB\-\-unicode\fR
-Print unicode characters
-.TP
-\fB\-u\fR, \fB\-\-uppercase\fR
-Uppercase hex output
-.TP
-\-?, \fB\-\-help\fR
-Give this help list
-.TP
-\fB\-\-usage\fR
-Give a short usage message
-.TP
-\fB\-V\fR, \fB\-\-version\fR
-Print program version
-
-.SH EXPRESSIONS
-.TP
-expr
-= expr, op, term
-| term ;
-.TP
+.Dd June 01, 2025
+.Dt BMATH 1
+.Os
+.Sh NAME
+.Nm bmath
+.Nd prints result of some bitwise expression in a pretty format
+.Sh SYNOPSIS
+.Nm
+.Op Fl b
+.Op Fl d Ar <EXPRESSION>
+.Op Fl u
+.Op Fl -unicode
+.Nm
+.Op Fl -help
+.Nm
+.Op Fl -usage
+.Nm
+.Op Fl V
+.Sh DESCRIPTION
+.Pp
+Prints the result of some bitwise \fIEXPRESSION\fR. These are parsed through \fB--detached\fR, \fBstdin\fR, or \fBinteractive\fR modes. The default mode is \fBinteractive\fR.
+.Pp
+Interactive mode can be exited by typing \fIexit\fR or \fIquit\fR.
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl b
+Appends binary representation of result to output.
+.It Fl d\ \fI<EXPRESSION>\fR, Fl -detached=\fI<EXPRESSION>\fR
+\fBstdin\fR is overriden given this option.
+.It Fl -help
+Prints help information.
+.It Fl u, Fl -uppercase
+Prints hexadecimal output in uppercase.
+.It Fl -unicode
+Appends unicode representation of result to output in UTF-8, 16, and 32 forms.
+.It Fl -usage
+Prints usage message.
+.It Fl V, Fl -version
+Prints program version.
+.El
+.Sh EXPRESSION
+.Bd -literal
+expr = expr, op, term
+     | term ;
 term = term, shift_op, factor
-| factor ;
-.TP
+     | factor ;
 factor = number
-  | lparen, expr, rparen
-  | negate, factor ;
-.TP
+       | lparen, expr, rparen
+       | negate, factor ;
 number = digit, { digit }
-  | hex ;
-.TP
-digit = [0\-9], { [0\-9] } ;
-.TP
-hex = "0x", [0\-9a\-fA\-F], { [0\-9a\-fA\-F] } ;
-.TP
+       | hex ;
+digit = [0-9], { [0-9] } ;
+hex = "0x", [0-9a-fA-F], { [0-9a-fA-F] } ;
 shift_op = "<<" | ">>" ;
-.TP
 op = "^" | "|" | "&" ;
-.TP
 lparen = "(" ;
-.TP
 rparen = ")" ;
-.TP
 negate = "~" ;
-.SH EXAMPLES
-.TP
-bmath -d "0xa"
-\   u64: 10
-\    i8: 10
-  char: <special>
-   Hex: 0xa
- Hex16: 0x000a
- Hex32: 0x0000000a
- Hex64: 0x000000000000000a
+.Ed
+.Sh EXAMPLES
+.Bd -literal
+$ echo "1 << 17" | bmath
+1 << 17
+  Dec: 131072
+ Char: Exceeded
+  Hex: 0x20000
+Hex16: Exceeded
+Hex32: 0x00020000
+Hex64: 0x0000000000020000
 
-.SH AUTHOR
+$ bmath --unicode -b -d "0xff"
+   u64: 255
+    i8: -1
+ UTF-8: ÿ (0xc3bf)
+UTF-16: ÿ (0x00ff)
+UTF-32: ÿ (0x000000ff)
+   Hex: 0xff
+ Hex16: 0x00ff
+ Hex32: 0x000000ff
+ Hex64: 0x00000000000000ff
+00000000 00000000 00000000 00000000
+00000000 00000000 00000000 11111111
+
+$ bmath
+expr> 0xff
+   u64: 255
+    i8: -1
+  char: Exceeded
+   Hex: 0xff
+ Hex16: 0x00ff
+ Hex32: 0x000000ff
+ Hex64: 0x00000000000000ff
+expr> 0x0f
+   u64: 15
+    i8: 15
+  char: <special>
+   Hex: 0xf
+ Hex16: 0x000f
+ Hex32: 0x0000000f
+ Hex64: 0x000000000000000f
+expr> exit
+.Ed
+.Sh AUTHOR
 Written by Frederick Lawler <me@fred.software>
-.SH REPORTING BUGS
+.Sh REPORTING BUGS
 Report any bugs to <https://github.com/fredlawl/bmath>

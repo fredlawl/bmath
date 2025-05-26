@@ -19,7 +19,7 @@ Using homebrew, install the following libraries:
 
 1. `brew install argp-standalone`
 2. `brew install readline`
-3. `brew install cmake`
+3. `brew install meson`
 4. `brew install iconv`
 5. (test suite only) `brew install criterion`
 
@@ -31,10 +31,8 @@ Using homebrew, install the following libraries:
 
 Clone this repo, `cd` into the cloned directory, and then run the following commands:
 
-1. `mkdir -p build && cd build && -DCMAKE_BUILD_TYPE=Release ../CMakeLists.txt`
-2. `make`
-3. `sudo make install`
-   > Installs to the `/usr/local/bin` directory.
+1. `meson setup build`
+2. `sudo meson install -C build --tags runtime,man`
 
 ## Usage
 

@@ -229,3 +229,4 @@ build
 .cache
 bmath
 bmath_test
+output

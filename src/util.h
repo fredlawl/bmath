@@ -1,5 +1,4 @@
-#ifndef BMATH_UTIL_H
-#define BMATH_UTIL_H
+#pragma once
 
 #include <inttypes.h>
 
@@ -9,17 +8,5 @@
 			fputc(c, fp);       \
 	} while (0)
 
-// TODO: This could easily be pass in a buffer or something
-#define __print_hex(n, b, u)                        \
-	do {                                        \
-		if (u) {                            \
-			printf("%0*" PRIX64, b, n); \
-		} else {                            \
-			printf("%0*" PRIx64, b, n); \
-		}                                   \
-	} while (0)
-
 #define likely(x) __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
-
-#endif

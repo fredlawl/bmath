@@ -1,19 +1,23 @@
+#include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <errno.h>
+#include <stdlib.h>
 
 #include "conversions.h"
 #include "parser.h"
 #include "util.h"
 #include "lookup_tables.h"
 
-static bool liberror = false;
+struct parser_context {
+	int max_parse_len;
+	bool liberror;
+};
 
-#define __general_error(fmt, arg...)                     \
+#define __general_error(l, fmt, arg...)                  \
 	do {                                             \
 		fprintf(stderr, "[ERROR]: " fmt, ##arg); \
-		liberror = true;                         \
+		(l)->ctx->liberror = true;               \
 	} while (0)
 
 #define __lexical_error(l, fmt, arg...)                                                 \
@@ -23,7 +27,7 @@ static bool liberror = false;
 		fprintf(stderr, "%s\n", (l)->line);                                     \
 		__repeat_character(stderr, (l)->current_column, '~');                   \
 		fprintf(stderr, "%c " fmt "\n", '^', ##arg);                            \
-		liberror = true;                                                        \
+		(l)->ctx->liberror = true;                                              \
 	} while (0)
 
 enum token_type {
@@ -65,6 +69,7 @@ struct token {
 
 struct lexer {
 	const char *line;
+	struct parser_context *ctx;
 	uint16_t current_column;
 	int16_t line_length;
 };
@@ -76,7 +81,8 @@ static inline bool __is_x(char character);
 static inline bool __is_start_of_hex(char current_character, char peek);
 static inline bool __is_illegal_character(char character);
 
-static struct lexer __init_lexer(const char *line, int16_t line_length);
+static struct lexer __init_lexer(struct parser_context *ctx, const char *line,
+				 int16_t line_length);
 static struct token __lexer_parse_number(struct lexer *lexer);
 static struct token __lexer_parse_hex(struct lexer *lexer);
 static struct token __lexer_get_next_token(struct lexer *lexer);
@@ -131,7 +137,27 @@ static uint64_t __perform_parse(struct lexer *lexer)
 	return __expr(lexer);
 }
 
-int parse(const char *infix_expression, size_t len, uint64_t *out_result)
+struct parser_context *parser_new(struct parser_settings *settings)
+{
+	struct parser_context *ctx = malloc(sizeof(*ctx));
+	if (!ctx) {
+		return NULL;
+	}
+
+	ctx->liberror = false;
+	ctx->max_parse_len = settings->max_parse_len;
+
+	return ctx;
+}
+
+int parser_free(struct parser_context *ctx)
+{
+	free(ctx);
+	return 0;
+}
+
+int parse(struct parser_context *ctx, const char *infix_expression, size_t len,
+	  uint64_t *out_result)
 {
 	struct lexer lexer;
 	uint64_t result;
@@ -141,15 +167,15 @@ int parse(const char *infix_expression, size_t len, uint64_t *out_result)
 	if (len == 0)
 		return PE_NOTHING_TO_PARSE;
 
-	if (len > (size_t)P_MAX_EXP_LEN)
+	if (len > (size_t)ctx->max_parse_len)
 		return PE_EXPRESSION_TOO_LONG;
 
-	lexer = __init_lexer(infix_expression, (int16_t)len);
+	lexer = __init_lexer(ctx, infix_expression, (int16_t)len);
 
 	result = __perform_parse(&lexer);
 
-	if (liberror) {
-		liberror = false;
+	if (ctx->liberror) {
+		ctx->liberror = false;
 		return PE_PARSE_ERROR;
 	}
 
@@ -179,13 +205,15 @@ static inline bool __is_illegal_character(char character)
 	return !__is_allowed_character(character);
 }
 
-static struct lexer __init_lexer(const char *line, int16_t line_length)
+static struct lexer __init_lexer(struct parser_context *ctx, const char *line,
+				 int16_t line_length)
 {
 	struct lexer lexer;
 
 	lexer.line = line;
 	lexer.current_column = 0;
 	lexer.line_length = line_length;
+	lexer.ctx = ctx;
 
 	return lexer;
 }
@@ -335,7 +363,7 @@ static void __expect(struct lexer *lex, enum token_type expected)
 		return;
 	}
 
-	if (!liberror) {
+	if (!lex->ctx->liberror) {
 		__lexical_error(lex, "Expecting a %s, but got %s instead.",
 				token_name(expected),
 				token_name(lookahead_token.type));
@@ -387,7 +415,8 @@ static uint64_t __term(struct lexer *lexer)
 			left >>= right;
 			break;
 		default:
-			__general_error("Something went wrong parsing term.\n");
+			__general_error(lexer,
+					"Something went wrong parsing term.\n");
 		}
 	}
 
@@ -418,7 +447,8 @@ static uint64_t __expr(struct lexer *lexer)
 			left ^= right;
 			break;
 		default:
-			__general_error("Something went wrong parsing expr.\n");
+			__general_error(lexer,
+					"Something went wrong parsing expr.\n");
 		}
 	}
 
