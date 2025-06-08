@@ -2,12 +2,14 @@
 # for deployment: meson install --tags runtime,man
 # for test: meson test
 project(
-  'bmath', 
-  'c', 
+  'bmath',
+  'c',
   version: '1.0.5',
   default_options: [
-    'c_std=c11', 
+    'c_std=c11',
     'c_flags=-O3 -Wall -Wshadow -Wextra -Wvla -Wmissing-field-initializers -fno-omit-frame-pointer'])
+
+add_project_link_arguments('-Wl,--build-id', language: ['c'])
 
 configure_file(
     input: 'src/version.h.in',
@@ -18,9 +20,9 @@ configure_file(
 # Release
 libbmath_deps = [dependency('iconv')]
 libbmath = shared_library(
-  'bmath', 
-  'src/parser.c', 
-  'src/print.c', 
+  'bmath',
+  'src/parser.c',
+  'src/print.c',
   dependencies: libbmath_deps,
   install: true,
   soversion: '0',
@@ -35,7 +37,7 @@ if criterion_dep.found()
     install: false,
     dependencies: [criterion_dep],
     link_with: libbmath)
- 
+
   test('everything', test_exe, args: ['--verbose'], verbose: true)
 endif
 
