@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdio.h>
 
 /*
  * Parse error codes
@@ -14,6 +15,7 @@ struct parser_context;
 
 struct parser_settings {
 	int max_parse_len;
+	FILE *err_stream;
 };
 
 struct parser_context *parser_new(struct parser_settings *settings);

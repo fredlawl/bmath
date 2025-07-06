@@ -4,7 +4,7 @@
 project(
   'bmath',
   'c',
-  version: '1.0.5',
+  version: '1.0.6',
   default_options: [
     'c_std=c11',
     'c_flags=-O3 -Wall -Wshadow -Wextra -Wvla -Wmissing-field-initializers -fno-omit-frame-pointer'])
@@ -26,7 +26,7 @@ libbmath = shared_library(
   dependencies: libbmath_deps,
   install: true,
   soversion: '0',
-  version: '0.0.1')
+  version: '0.0.2')
 
 # Test
 criterion_dep = dependency('criterion', required: false)

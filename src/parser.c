@@ -12,21 +12,22 @@
 struct parser_context {
 	int max_parse_len;
 	bool liberror;
+	FILE *err_stream;
 };
 
-#define __general_error(l, fmt, arg...)                  \
-	do {                                             \
-		fprintf(stderr, "[ERROR]: " fmt, ##arg); \
-		(l)->ctx->liberror = true;               \
+#define __general_error(l, fmt, arg...)                           \
+	do {                                                      \
+		fprintf((l)->err_stream, "[ERROR]: " fmt, ##arg); \
+		(l)->ctx->liberror = true;                        \
 	} while (0)
 
 #define __lexical_error(l, fmt, arg...)                                                 \
 	do {                                                                            \
-		fprintf(stderr,                                                         \
+		fprintf((l)->err_stream,                                                \
 			"[PARSE ERROR]: There was an error parsing the expression:\n"); \
-		fprintf(stderr, "%s\n", (l)->line);                                     \
-		__repeat_character(stderr, (l)->current_column, '~');                   \
-		fprintf(stderr, "%c " fmt "\n", '^', ##arg);                            \
+		fprintf((l)->err_stream, "%s\n", (l)->line);                            \
+		__repeat_character((l)->err_stream, (l)->current_column, '~');          \
+		fprintf((l)->err_stream, "%c " fmt "\n", '^', ##arg);                   \
 		(l)->ctx->liberror = true;                                              \
 	} while (0)
 
@@ -72,6 +73,7 @@ struct lexer {
 	struct parser_context *ctx;
 	uint16_t current_column;
 	int16_t line_length;
+	FILE *err_stream;
 };
 
 // fixable global variable
@@ -146,6 +148,10 @@ struct parser_context *parser_new(struct parser_settings *settings)
 
 	ctx->liberror = false;
 	ctx->max_parse_len = settings->max_parse_len;
+	ctx->err_stream = stderr;
+	if (settings->err_stream) {
+		ctx->err_stream = settings->err_stream;
+	}
 
 	return ctx;
 }
@@ -171,6 +177,7 @@ int parse(struct parser_context *ctx, const char *infix_expression, size_t len,
 		return PE_EXPRESSION_TOO_LONG;
 
 	lexer = __init_lexer(ctx, infix_expression, (int16_t)len);
+	lexer.err_stream = ctx->err_stream;
 
 	result = __perform_parse(&lexer);
 
