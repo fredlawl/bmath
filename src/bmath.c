@@ -51,6 +51,8 @@ int evaluate(struct parser_context *ctx, const char *input, size_t len,
 	if (print_expr) {
 		puts(input);
 	}
+
+	print_set_stream(stdout);
 	print_number(output, uppercase_hex,
 		     (show_unicode) ? ENC_ALL : ENC_ASCII);
 	if (show_binary) {

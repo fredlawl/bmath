@@ -1,3 +1,9 @@
+bmath (1.0.6) unstable; urgency=medium
+
+  * Users can use other logging streams than stdout/err
+
+ -- Frederick Lawler <me@fred.software>  Mon, 07 Jul 2025 08:50:52 -0500
+
 bmath (1.0.5) unstable; urgency=low
 
   * Initial release.

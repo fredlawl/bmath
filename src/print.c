@@ -11,6 +11,8 @@
 
 #include "print.h"
 
+FILE *stream = NULL;
+
 static const char *to_encoding_lookup[] = { [ENC_UTF8] = "UTF-8",
 					    [ENC_UTF16] = "UTF-16BE",
 					    [ENC_UTF32] = "UTF-32BE" };
@@ -84,27 +86,27 @@ static void print_unicode(uint64_t num, bool uppercase_hex,
 	size_t offset[] = { [ENC_UTF8] = 1, [ENC_UTF16] = 2, [ENC_UTF32] = 4 };
 
 	if (num > UINT32_MAX) {
-		printf("%s: Exceeded\n",
-		       to_encoding_pretty_print_lookup[to_unicode]);
+		fprintf(stream, "%s: Exceeded\n",
+			to_encoding_pretty_print_lookup[to_unicode]);
 		return;
 	}
 
 	memcpy(&number_as_byte_array, &num, sizeof num);
 
-	printf("%s: ", to_encoding_pretty_print_lookup[to_unicode]);
+	fprintf(stream, "%s: ", to_encoding_pretty_print_lookup[to_unicode]);
 
 	// Convert to UTF-8
 	if (num < 31) {
-		fputs("<special> ", stdout);
+		fputs("<special> ", stream);
 	} else {
 		cd = iconv_descriptors[ENC_UTF8];
 		conversion =
 			iconv(cd, &utf8_input, &in_size, &utf8, &utf8_size);
 
 		if (conversion == (size_t)-1) {
-			fputs("<invalid> ", stdout);
+			fputs("<invalid> ", stream);
 		} else {
-			printf("%s ", utf8_buf);
+			fprintf(stream, "%s ", utf8_buf);
 		}
 	}
 
@@ -114,11 +116,11 @@ static void print_unicode(uint64_t num, bool uppercase_hex,
 			   &to_unicode_bytes, &to_unicode_size);
 
 	if (conversion == (size_t)-1) {
-		puts("<invalid>");
+		fputs("<invalid>\n", stream);
 		return;
 	}
 
-	fputs("(0x", stdout);
+	fputs("(0x", stream);
 
 	/*
 	 re: offset
@@ -132,7 +134,28 @@ static void print_unicode(uint64_t num, bool uppercase_hex,
 			    uppercase_hex);
 	}
 
-	puts(")");
+	fputs(")\n", stream);
+}
+
+static inline void ensure_stream()
+{
+	if (!stream)
+		stream = stdout;
+}
+
+void print_set_stream(FILE *s)
+{
+	stream = s;
+}
+
+void print_hex(bool u, int b, uint64_t n)
+{
+	ensure_stream();
+	if (u) {
+		fprintf(stream, "%0*" PRIX64, b, n);
+	} else {
+		fprintf(stream, "%0*" PRIx64, b, n);
+	}
 }
 
 void print_binary(uint64_t number)
@@ -159,7 +182,8 @@ void print_binary(uint64_t number)
 		i++;
 	}
 
-	fwrite(buff, sizeof(buff), 1, stdout);
+	ensure_stream();
+	fwrite(buff, sizeof(buff), 1, stream);
 }
 
 void print_number(uint64_t num, bool uppercase_hex, int encoding_mask)
@@ -168,27 +192,28 @@ void print_number(uint64_t num, bool uppercase_hex, int encoding_mask)
 		return;
 	}
 
-	printf("   u64: %" PRIu64 "\n", num);
+	ensure_stream();
+	fprintf(stream, "   u64: %" PRIu64 "\n", num);
 
 	if (num <= 0xff) {
-		printf("    i8: %" PRId8 "\n", (int8_t)num);
+		fprintf(stream, "    i8: %" PRId8 "\n", (int8_t)num);
 	} else if (num <= 0xffff) {
-		printf("   i16: %" PRId16 "\n", (int16_t)num);
+		fprintf(stream, "   i16: %" PRId16 "\n", (int16_t)num);
 	} else if (num <= 0xffffffff) {
-		printf("   i32: %" PRId32 "\n", (int32_t)num);
+		fprintf(stream, "   i32: %" PRId32 "\n", (int32_t)num);
 	} else {
-		printf("   i64: %" PRId64 "\n", (int64_t)num);
+		fprintf(stream, "   i64: %" PRId64 "\n", (int64_t)num);
 	}
 
 	if (encoding_mask & ENC_ASCII) {
 		if (num <= CHAR_MAX) {
 			if (num <= 31) {
-				puts("  char: <special>");
+				fputs("  char: <special>\n", stream);
 			} else {
-				printf("  char: %c\n", (char)num);
+				fprintf(stream, "  char: %c\n", (char)num);
 			}
 		} else {
-			puts("  char: Exceeded");
+			fputs("  char: Exceeded\n", stream);
 		}
 	}
 
@@ -210,27 +235,27 @@ void print_number(uint64_t num, bool uppercase_hex, int encoding_mask)
 		}
 	}
 
-	fputs("   Hex: 0x", stdout);
+	fputs("   Hex: 0x", stream);
 	__print_hex(num, 0, uppercase_hex);
-	putchar('\n');
+	fputc('\n', stream);
 
 	if (num <= UINT16_MAX) {
-		fputs(" Hex16: 0x", stdout);
+		fputs(" Hex16: 0x", stream);
 		__print_hex(num, 4, uppercase_hex);
-		putchar('\n');
+		fputc('\n', stream);
 	} else {
-		puts(" Hex16: Exceeded");
+		fputs(" Hex16: Exceeded\n", stream);
 	}
 
 	if (num <= UINT32_MAX) {
-		fputs(" Hex32: 0x", stdout);
+		fputs(" Hex32: 0x", stream);
 		__print_hex(num, 8, uppercase_hex);
-		putchar('\n');
+		fputc('\n', stream);
 	} else {
-		puts(" Hex32: Exceeded");
+		fputs(" Hex32: Exceeded\n", stream);
 	}
 
-	fputs(" Hex64: 0x", stdout);
+	fputs(" Hex64: 0x", stream);
 	__print_hex(num, 16, uppercase_hex);
-	putchar('\n');
+	fputc('\n', stream);
 }
