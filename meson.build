@@ -6,10 +6,25 @@ project(
   'c',
   version: '1.0.6',
   default_options: [
-    'c_std=c11',
-    'c_flags=-O3 -Wall -Wshadow -Wextra -Wvla -Wmissing-field-initializers -fno-omit-frame-pointer'])
+    'c_std=c11'])
+
+
+add_project_arguments([
+  '-Wshadow',
+  '-Wvla',
+  '-Wmissing-field-initializers',
+  '-fno-omit-frame-pointer'], language: ['c'])
 
 add_project_link_arguments('-Wl,--build-id', language: ['c'])
+
+# default build type
+if get_option('buildtype') == 'debug'
+  add_global_arguments('-DDEBUG', language : 'c')
+endif
+
+if get_option('buildtype') == 'release'
+  add_project_arguments(['-fstack-protector'], language: ['c'])
+endif
 
 configure_file(
     input: 'src/version.h.in',

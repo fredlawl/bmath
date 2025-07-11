@@ -31,7 +31,7 @@ Using homebrew, install the following libraries:
 
 Clone this repo, `cd` into the cloned directory, and then run the following commands:
 
-1. `meson setup build`
+1. `meson setup --buildtype=release build`
 2. `sudo meson install -C build --tags runtime,man`
 
 ## Usage
