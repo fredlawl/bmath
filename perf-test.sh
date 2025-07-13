@@ -5,7 +5,11 @@ if [ ! -e test-input ]; then
   ./gen.py -i 1000000 -s 0 >test-input
 fi
 
-perf record -F max --call-graph=dwarf -g --all-user ./bin/release/bmath -b --unicode <test-input >/dev/null
+if [ ! -d FlameGraph ]; then
+  git clone --depth=1 https://github.com/brendangregg/FlameGraph.git
+fi
+
+perf record -F max --call-graph=dwarf -g --all-user ./build/bmath <test-input >/dev/null
 perf script >out.perf
-~/Projects/FlameGraph/stackcollapse-perf.pl out.perf >perf.folded
-~/Projects/FlameGraph/flamegraph.pl perf.folded >flamegraph.svg
+./FlameGraph/stackcollapse-perf.pl out.perf >perf.folded
+./FlameGraph/flamegraph.pl --reverse perf.folded >flamegraph.svg

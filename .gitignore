@@ -230,3 +230,4 @@ build
 bmath
 bmath_test
 output
+FlameGraph
