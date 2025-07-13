@@ -13,8 +13,6 @@ enum encoding_t {
 	ENC_UTF32 = (1 << 3)
 };
 
-#define ENC_INDEX(v) (1 >> v)
-
 #define ENC_UTF (ENC_UTF8 | ENC_UTF16 | ENC_UTF32)
 #define ENC_ALL (ENC_ASCII | ENC_UTF)
 
