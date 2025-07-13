@@ -10,7 +10,7 @@ enum encoding_t {
 	ENC_ASCII = (1 << 0),
 	ENC_UTF8 = (1 << 1),
 	ENC_UTF16 = (1 << 2),
-	ENC_UTF32 = (1 << 4)
+	ENC_UTF32 = (1 << 3)
 };
 
 #define ENC_INDEX(v) (1 >> v)
