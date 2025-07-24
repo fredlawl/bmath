@@ -379,3 +379,36 @@ Test(conversions, hex_allow_spaces)
 	cr_assert_eq(parsed, 3);
 	cr_assert_eq(actual, 10);
 }
+
+Test(parser, signed_factors)
+{
+	int ret;
+	uint64_t actual;
+	struct test_cases {
+		char *input;
+		uint64_t expected;
+		bool err;
+	} cases[] = { { .input = "16", .expected = 16, .err = false },
+		      { .input = "+16", .expected = 16, .err = false },
+		      { .input = "+0", .expected = 0, .err = false },
+		      { .input = "-0", .expected = 0, .err = false },
+		      { .input = "+0x10", .expected = 16, .err = false },
+		      { .input = "-0x10", .expected = -16, .err = false },
+		      { .input = "-(-16)", .expected = 16, .err = false },
+		      { .input = "-(-(-16))", .expected = -16, .err = false },
+		      { .input = "+(+16)", .expected = 16, .err = false },
+		      { .input = "--16", .expected = 16, .err = true },
+		      { .input = "++16", .expected = 16, .err = true } };
+
+	for (int i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+		ret = parse(pctx, cases[i].input, strlen(cases[i].input),
+			    &actual);
+		if (cases[i].err) {
+			cr_assert_neq(ret, 0, "%s", cases[i].input);
+			continue;
+		}
+
+		cr_assert_eq(ret, 0);
+		cr_assert_eq(actual, cases[i].expected, "%s", cases[i].input);
+	}
+}

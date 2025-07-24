@@ -39,13 +39,14 @@ enum token_type {
 	TOK_LPAREN,
 	TOK_RPAREN,
 	TOK_NEGATE,
+	TOK_SIGN,
 };
 
 static const char *lookup_token_name[] = {
 	[TOK_NULL] = "null",	 [TOK_NUMBER] = "number",
 	[TOK_OP] = "&, |, or ^", [TOK_SHIFT_OP] = "<<, or >>",
 	[TOK_LPAREN] = "(",	 [TOK_RPAREN] = ")",
-	[TOK_NEGATE] = "~",
+	[TOK_NEGATE] = "~",	 [TOK_SIGN] = "+, or -"
 };
 
 static inline const char *token_name(enum token_type tok)
@@ -61,6 +62,8 @@ static inline const char *token_name(enum token_type tok)
 #define ATTR_OP_AND ATTR_RSHIFT + 1
 #define ATTR_OP_OR ATTR_OP_AND + 1
 #define ATTR_OP_XOR ATTR_OP_OR + 1
+#define ATTR_SIGN_PLUS ATTR_OP_OR + 1
+#define ATTR_SIGN_MINUS ATTR_SIGN_PLUS + 1
 #define ATTR_NULL UINT64_MAX
 
 struct token {
@@ -334,6 +337,16 @@ static struct token __lexer_get_next_token(struct lexer *lexer)
 			token.attr = ATTR_OP_XOR;
 			lexer->current_column++;
 			return token;
+		case '+':
+			token.type = TOK_SIGN;
+			token.attr = ATTR_SIGN_PLUS;
+			lexer->current_column++;
+			return token;
+		case '-':
+			token.type = TOK_SIGN;
+			token.attr = ATTR_SIGN_MINUS;
+			lexer->current_column++;
+			return token;
 		default:
 			break;
 		}
@@ -380,24 +393,32 @@ static void __expect(struct lexer *lex, enum token_type expected)
 static uint64_t __factor(struct lexer *lexer)
 {
 	uint64_t result;
+	bool should_flip = false;
 	bool should_negate = false;
 
 	if (lookahead_token.type == TOK_NEGATE) {
 		__expect(lexer, TOK_NEGATE);
-		should_negate = true;
+		should_flip = true;
+	}
+
+	if (lookahead_token.type == TOK_SIGN) {
+		should_negate = lookahead_token.attr == ATTR_SIGN_MINUS;
+		__expect(lexer, TOK_SIGN);
 	}
 
 	if (lookahead_token.type == TOK_LPAREN) {
 		__expect(lexer, TOK_LPAREN);
 		result = __expr(lexer);
 		__expect(lexer, TOK_RPAREN);
-		return (should_negate) ? ~result : result;
+		goto out;
 	}
 
 	result = lookahead_token.attr;
 	__expect(lexer, TOK_NUMBER);
 
-	return (should_negate) ? ~result : result;
+out:
+	result = (should_negate) ? -result : result;
+	return (should_flip) ? ~result : result;
 }
 
 static uint64_t __term(struct lexer *lexer)

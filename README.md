@@ -101,13 +101,14 @@ Hex64: 0x0000000000020000
 ## Syntax
 
 ```
-expr  = expr, op, term
+expr  = term, op, term
       | term ;
-term = term, shift_op, factor
+term = factor, shift_op, factor
      | factor ;
 factor = number
        | lparen, expr, rparen
-       | negate, factor ;
+       | negate | sign, factor
+       | negate, sign, factor ;
 number = digit, { digit }
        | hex ;
 digit = [0-9], { [0-9] } ;
@@ -117,4 +118,5 @@ op = "^" | "|" | "&" ;
 lparen = "(" ;
 rparen = ")" ;
 negate = "~" ;
+sign = "-" | "+" ;
 ```
