@@ -38,14 +38,15 @@ enum token_type {
 	TOK_SHIFT_OP,
 	TOK_LPAREN,
 	TOK_RPAREN,
-	TOK_NEGATE,
+	TOK_BITWISE_NOT,
+	TOK_SIGN,
 };
 
 static const char *lookup_token_name[] = {
 	[TOK_NULL] = "null",	 [TOK_NUMBER] = "number",
 	[TOK_OP] = "&, |, or ^", [TOK_SHIFT_OP] = "<<, or >>",
 	[TOK_LPAREN] = "(",	 [TOK_RPAREN] = ")",
-	[TOK_NEGATE] = "~",
+	[TOK_BITWISE_NOT] = "~", [TOK_SIGN] = "+, or -"
 };
 
 static inline const char *token_name(enum token_type tok)
@@ -55,12 +56,14 @@ static inline const char *token_name(enum token_type tok)
 
 #define ATTR_LPAREN 1
 #define ATTR_RPAREN ATTR_LPAREN + 1
-#define ATTR_NEGATE ATTR_RPAREN + 1
-#define ATTR_LSHIFT ATTR_NEGATE + 1
+#define ATTR_BITWISE_NOT ATTR_RPAREN + 1
+#define ATTR_LSHIFT ATTR_BITWISE_NOT + 1
 #define ATTR_RSHIFT ATTR_LSHIFT + 1
 #define ATTR_OP_AND ATTR_RSHIFT + 1
 #define ATTR_OP_OR ATTR_OP_AND + 1
 #define ATTR_OP_XOR ATTR_OP_OR + 1
+#define ATTR_SIGN_PLUS ATTR_OP_OR + 1
+#define ATTR_SIGN_MINUS ATTR_SIGN_PLUS + 1
 #define ATTR_NULL UINT64_MAX
 
 struct token {
@@ -90,9 +93,14 @@ static struct token __lexer_parse_hex(struct lexer *lexer);
 static struct token __lexer_get_next_token(struct lexer *lexer);
 
 static void __expect(struct lexer *lexer, enum token_type expected);
-static uint64_t __factor(struct lexer *lexer);
-static uint64_t __term(struct lexer *lexer);
-static uint64_t __expr(struct lexer *lexer);
+
+static uint64_t expr_number(struct lexer *lexer);
+static uint64_t expr_signed(struct lexer *lexer);
+static uint64_t expr_shift(struct lexer *lexer);
+static uint64_t expr_and(struct lexer *lexer);
+static uint64_t expr_xor(struct lexer *lexer);
+static uint64_t expr_or(struct lexer *lexer);
+static uint64_t expr(struct lexer *lexer);
 
 size_t str_hex_to_uint64(const char *input, ssize_t input_length,
 			 uint64_t *result)
@@ -136,7 +144,7 @@ size_t str_hex_to_uint64(const char *input, ssize_t input_length,
 static uint64_t __perform_parse(struct lexer *lexer)
 {
 	lookahead_token = __lexer_get_next_token(lexer);
-	return __expr(lexer);
+	return expr(lexer);
 }
 
 struct parser_context *parser_new(struct parser_settings *settings)
@@ -305,8 +313,8 @@ static struct token __lexer_get_next_token(struct lexer *lexer)
 			lexer->current_column++;
 			continue;
 		case '~':
-			token.type = TOK_NEGATE;
-			token.attr = ATTR_NEGATE;
+			token.type = TOK_BITWISE_NOT;
+			token.attr = ATTR_BITWISE_NOT;
 			lexer->current_column++;
 			return token;
 		case '(':
@@ -332,6 +340,16 @@ static struct token __lexer_get_next_token(struct lexer *lexer)
 		case '^':
 			token.type = TOK_OP;
 			token.attr = ATTR_OP_XOR;
+			lexer->current_column++;
+			return token;
+		case '+':
+			token.type = TOK_SIGN;
+			token.attr = ATTR_SIGN_PLUS;
+			lexer->current_column++;
+			return token;
+		case '-':
+			token.type = TOK_SIGN;
+			token.attr = ATTR_SIGN_MINUS;
 			lexer->current_column++;
 			return token;
 		default:
@@ -377,35 +395,106 @@ static void __expect(struct lexer *lex, enum token_type expected)
 	}
 }
 
-static uint64_t __factor(struct lexer *lexer)
+static uint64_t expr_number(struct lexer *lexer)
 {
-	uint64_t result;
-	bool should_negate = false;
-
-	if (lookahead_token.type == TOK_NEGATE) {
-		__expect(lexer, TOK_NEGATE);
-		should_negate = true;
-	}
+	uint64_t ret;
 
 	if (lookahead_token.type == TOK_LPAREN) {
 		__expect(lexer, TOK_LPAREN);
-		result = __expr(lexer);
+		ret = expr(lexer);
 		__expect(lexer, TOK_RPAREN);
-		return (should_negate) ? ~result : result;
+		return ret;
 	}
 
-	result = lookahead_token.attr;
+	ret = lookahead_token.attr;
 	__expect(lexer, TOK_NUMBER);
-
-	return (should_negate) ? ~result : result;
+	return ret;
 }
 
-static uint64_t __term(struct lexer *lexer)
+static uint64_t expr_signed(struct lexer *lexer)
+{
+#define MAX_STACK 10
+	struct token stack[MAX_STACK] = { 0 };
+	struct token tok;
+
+	uint64_t ret;
+	int i = -1;
+	bool exit = false;
+
+	while (!exit) {
+		tok = lookahead_token;
+		switch (tok.type) {
+		case TOK_BITWISE_NOT:
+		case TOK_SIGN:
+			i++;
+			if (i >= MAX_STACK) {
+				__lexical_error(
+					lexer, "Exceeded max stack depth of %d",
+					MAX_STACK);
+				return 0;
+			}
+			stack[i] = tok;
+			__expect(lexer, lookahead_token.type);
+			break;
+		default:
+			exit = true;
+			ret = expr_number(lexer);
+		}
+	}
+
+	for (int j = i; j >= 0; j--) {
+		switch (stack[j].type) {
+		case TOK_BITWISE_NOT:
+			ret = ~ret;
+		case TOK_SIGN:
+			if (stack[j].attr == ATTR_SIGN_MINUS) {
+				ret = -ret;
+			}
+			break;
+		default:
+			break;
+		}
+	}
+
+	return ret;
+}
+
+static uint64_t expr_add(struct lexer *lexer)
 {
 	uint64_t left, right;
 	struct token tok;
 
-	left = __factor(lexer);
+	left = expr_signed(lexer);
+	while (true) {
+		if (lookahead_token.type != TOK_SIGN) {
+			break;
+		}
+
+		tok = lookahead_token;
+		__expect(lexer, lookahead_token.type);
+		right = expr_signed(lexer);
+		switch (tok.attr) {
+		case ATTR_SIGN_PLUS:
+			left += right;
+			break;
+		case ATTR_SIGN_MINUS:
+			left -= right;
+			break;
+		default:
+			__general_error(lexer,
+					"Something went wrong parsing term.\n");
+		}
+	}
+
+	return left;
+}
+
+static uint64_t expr_shift(struct lexer *lexer)
+{
+	uint64_t left, right;
+	struct token tok;
+
+	left = expr_add(lexer);
 	while (true) {
 		if (lookahead_token.type != TOK_SHIFT_OP) {
 			break;
@@ -413,7 +502,7 @@ static uint64_t __term(struct lexer *lexer)
 
 		tok = lookahead_token;
 		__expect(lexer, lookahead_token.type);
-		right = __factor(lexer);
+		right = expr_add(lexer);
 		switch (tok.attr) {
 		case ATTR_LSHIFT:
 			left <<= right;
@@ -426,38 +515,46 @@ static uint64_t __term(struct lexer *lexer)
 					"Something went wrong parsing term.\n");
 		}
 	}
-
 	return left;
 }
 
-static uint64_t __expr(struct lexer *lexer)
+static uint64_t expr_and(struct lexer *lexer)
 {
-	uint64_t left, right;
-	struct token tok;
+	uint64_t left;
 
-	left = __term(lexer);
-	while (true) {
-		if (lookahead_token.type != TOK_OP)
-			break;
+	left = expr_shift(lexer);
+	if (lookahead_token.attr != ATTR_OP_AND)
+		return left;
 
-		tok = lookahead_token;
-		__expect(lexer, lookahead_token.type);
-		right = __term(lexer);
-		switch (tok.attr) {
-		case ATTR_OP_AND:
-			left &= right;
-			break;
-		case ATTR_OP_OR:
-			left |= right;
-			break;
-		case ATTR_OP_XOR:
-			left ^= right;
-			break;
-		default:
-			__general_error(lexer,
-					"Something went wrong parsing expr.\n");
-		}
-	}
+	__expect(lexer, TOK_OP);
+	return left & expr_and(lexer);
+}
 
-	return left;
+static uint64_t expr_xor(struct lexer *lexer)
+{
+	uint64_t left;
+
+	left = expr_and(lexer);
+	if (lookahead_token.attr != ATTR_OP_XOR)
+		return left;
+
+	__expect(lexer, TOK_OP);
+	return left ^ expr_xor(lexer);
+}
+
+static uint64_t expr_or(struct lexer *lexer)
+{
+	uint64_t left;
+
+	left = expr_xor(lexer);
+	if (lookahead_token.attr != ATTR_OP_OR)
+		return left;
+
+	__expect(lexer, TOK_OP);
+	return left | expr_or(lexer);
+}
+
+static uint64_t expr(struct lexer *lexer)
+{
+	return expr_or(lexer);
 }

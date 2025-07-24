@@ -4,10 +4,9 @@ Online or native shell calculators either have weird syntax to follow, or no
 syntax at all that allows nested calculations. Bmath solves these problems with
 a one stop tool that does calculations and conversions.
 
-There is no support for negative values. The maximum number a calculation may
-produce is a unsigned 64-bit integer. Overflow is possible if an expression
-calculation exceeds that number. This program assumes little-endian system,
-but big-endian input.
+The maximum number a calculation may produce is a unsigned 64-bit integer.
+Overflow is possible if an expression calculation exceeds that number.
+This program assumes little-endian system, but big-endian input.
 
 ## Install
 
@@ -101,20 +100,31 @@ Hex64: 0x0000000000020000
 ## Syntax
 
 ```
-expr  = expr, op, term
-      | term ;
-term = term, shift_op, factor
-     | factor ;
-factor = number
-       | lparen, expr, rparen
-       | negate, factor ;
+expr = signed, op, signed
+     | signed ;
+signed = number
+       | paren, expr, rparen
+       | { logic_not | sign }, signed
 number = digit, { digit }
        | hex ;
 digit = [0-9], { [0-9] } ;
 hex = "0x", [0-9a-fA-F], { [0-9a-fA-F] } ;
-shift_op = "<<" | ">>" ;
-op = "^" | "|" | "&" ;
+op = "|" | "^" | "&" | "<<" | ">>" | "-" | "+" ;
 lparen = "(" ;
 rparen = ")" ;
-negate = "~" ;
+logic_not = "~" ;
+sign = "-" | "+" ;
+
+Order of operations:
++------------+
+| 1 | +, -   |
++---+--------+
+| 2 | <<, >> |
++---+--------+
+| 3 | &      |
++---+--------+
+| 4 | ^      |
++---+--------+
+| 5 | |      |
++---+--------+
 ```

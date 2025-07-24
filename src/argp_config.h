@@ -9,28 +9,11 @@ const char *argp_program_bug_address = "Frederick Lawler <fred@fredlawl.com>";
 
 static char args_doc[] = "";
 
-static char doc[] = "Write out a term or expression to get a desired result."
-		    " Only POSITIVE numbers are allowed."
-		    "\n\nDetached Example:"
-		    "\n\t./bmath -d \"1 << 1\""
+static char doc[] = "\nUsage examples:"
 		    "\n\t./bmath -d \"0x001\""
-		    "\n\nLanguage Specification:"
-		    "\n\texpr  = expr, op, term"
-		    "\n\t      | term ;"
-		    "\n\tterm = term, shift_op, factor"
-		    "\n\t     | factor ;"
-		    "\n\tfactor = number"
-		    "\n\t       | lparen, expr, rparen"
-		    "\n\t       | negate, factor ;"
-		    "\n\tnumber = digit, { digit }"
-		    "\n\t       | hex ;"
-		    "\n\tdigit = [0-9], { [0-9] } ;"
-		    "\n\thex = \"0x\", [0-9a-fA-F], { [0-9a-fA-F] } ;"
-		    "\n\tshift_op = \"<<\" | \">>\" ;"
-		    "\n\top = \"^\" | \"|\" | \"&\" ;"
-		    "\n\tlparen = \"(\" ;"
-		    "\n\trparen = \")\" ;"
-		    "\n\tnegate = \"~\" ;";
+		    "\n\t./bmath < input-file"
+		    "\n\t./bmath"
+		    "\n\nSee bmath(1) for detailed examples and explinations.";
 
 struct arguments {
 	char *detached_expr;

@@ -2,10 +2,10 @@
 
 #include <inttypes.h>
 
-#define __repeat_character(fp, n, c)        \
-	do {                                \
-		for (int i = 0; i < n; i++) \
-			fputc(c, fp);       \
+#define __repeat_character(fp, n, c)           \
+	do {                                   \
+		for (int _i = 0; _i < n; _i++) \
+			fputc(c, fp);          \
 	} while (0)
 
 #define likely(x) __builtin_expect(!!(x), 1)
