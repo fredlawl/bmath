@@ -13,7 +13,11 @@ add_project_arguments([
   '-Wshadow',
   '-Wvla',
   '-Wmissing-field-initializers',
-  '-fno-omit-frame-pointer'], language: ['c'])
+  '-fno-omit-frame-pointer', 
+  '-D_FORTIFY_SOURCE=2',
+  '-fstack-protector-strong',
+  '-fstack-clash-protection',
+  '-O2'], language: ['c'])
 
 add_project_link_arguments('-Wl,--build-id', language: ['c'])
 
@@ -23,7 +27,8 @@ if get_option('buildtype') == 'debug'
 endif
 
 if get_option('buildtype') == 'release'
-  add_project_arguments(['-fstack-protector'], language: ['c'])
+  add_project_arguments(['-pie', '-fpie'], language: ['c'])
+  add_project_link_arguments(['-Wl,-z,relro,-z,now', '-Wl,-z,noexecstack'], language: ['c'])
 endif
 
 configure_file(
