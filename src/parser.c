@@ -38,7 +38,7 @@ enum token_type {
 	TOK_SHIFT_OP,
 	TOK_LPAREN,
 	TOK_RPAREN,
-	TOK_NEGATE,
+	TOK_BITWISE_NOT,
 	TOK_SIGN,
 };
 
@@ -46,7 +46,7 @@ static const char *lookup_token_name[] = {
 	[TOK_NULL] = "null",	 [TOK_NUMBER] = "number",
 	[TOK_OP] = "&, |, or ^", [TOK_SHIFT_OP] = "<<, or >>",
 	[TOK_LPAREN] = "(",	 [TOK_RPAREN] = ")",
-	[TOK_NEGATE] = "~",	 [TOK_SIGN] = "+, or -"
+	[TOK_BITWISE_NOT] = "~", [TOK_SIGN] = "+, or -"
 };
 
 static inline const char *token_name(enum token_type tok)
@@ -308,7 +308,7 @@ static struct token __lexer_get_next_token(struct lexer *lexer)
 			lexer->current_column++;
 			continue;
 		case '~':
-			token.type = TOK_NEGATE;
+			token.type = TOK_BITWISE_NOT;
 			token.attr = ATTR_NEGATE;
 			lexer->current_column++;
 			return token;
@@ -390,35 +390,66 @@ static void __expect(struct lexer *lex, enum token_type expected)
 	}
 }
 
-static uint64_t __factor(struct lexer *lexer)
+static uint64_t __descend(struct lexer *lexer)
 {
-	uint64_t result;
-	bool should_flip = false;
-	bool should_negate = false;
-
-	if (lookahead_token.type == TOK_NEGATE) {
-		__expect(lexer, TOK_NEGATE);
-		should_flip = true;
-	}
-
-	if (lookahead_token.type == TOK_SIGN) {
-		should_negate = lookahead_token.attr == ATTR_SIGN_MINUS;
-		__expect(lexer, TOK_SIGN);
-	}
+	uint64_t ret;
 
 	if (lookahead_token.type == TOK_LPAREN) {
 		__expect(lexer, TOK_LPAREN);
-		result = __expr(lexer);
+		ret = __expr(lexer);
 		__expect(lexer, TOK_RPAREN);
 		goto out;
 	}
 
-	result = lookahead_token.attr;
+	ret = lookahead_token.attr;
 	__expect(lexer, TOK_NUMBER);
 
 out:
-	result = (should_negate) ? -result : result;
-	return (should_flip) ? ~result : result;
+	return ret;
+}
+
+static uint64_t __factor(struct lexer *lexer)
+{
+	static struct token order[2] = { 0 };
+	struct token tok;
+	uint64_t ret;
+	int i = 0;
+	bool exit = false;
+
+	while (!exit) {
+		tok = lookahead_token;
+		switch (tok.type) {
+		case TOK_BITWISE_NOT:
+		case TOK_SIGN:
+			order[i] = tok;
+			__expect(lexer, lookahead_token.type);
+			break;
+		case TOK_NUMBER:
+			exit = true;
+			ret = __descend(lexer);
+			break;
+		default:
+			__general_error(lexer,
+					"Something went wrong parsing term.\n");
+		}
+		i++;
+	}
+
+	for (int j = i; j > 0; j--) {
+		switch (order[j].type) {
+		case TOK_BITWISE_NOT:
+			ret = ~ret;
+		case TOK_SIGN:
+			if (order[j].attr == ATTR_SIGN_MINUS) {
+				ret = -ret;
+			}
+			break;
+		default:
+			break;
+		}
+	}
+
+	return ret;
 }
 
 static uint64_t __term(struct lexer *lexer)

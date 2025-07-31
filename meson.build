@@ -58,7 +58,7 @@ if criterion_dep.found()
     link_with: libbmath,
   )
 
-  test('everything', test_exe, args: ['--verbose'], verbose: true)
+  test('everything', test_exe, args: [], verbose: true)
 endif
 
 # todo: figure out argp dep for non-gnu platforms
