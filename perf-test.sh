@@ -12,4 +12,5 @@ fi
 perf record -F max --call-graph=dwarf -g --all-user ./build/bmath <test-input >/dev/null
 perf script >out.perf
 ./FlameGraph/stackcollapse-perf.pl out.perf >perf.folded
-./FlameGraph/flamegraph.pl --reverse perf.folded >flamegraph.svg
+./FlameGraph/flamegraph.pl perf.folded >flamegraph.svg
+./FlameGraph/flamegraph.pl --reverse perf.folded >flamegraph-reverse.svg
