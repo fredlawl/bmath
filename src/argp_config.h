@@ -17,6 +17,7 @@ static char doc[] = "\nUsage examples:"
 
 struct arguments {
 	char *detached_expr;
+	char *alignment_expr;
 	bool should_uppercase_hex;
 	bool should_show_unicode;
 	bool print_binary;
@@ -27,6 +28,7 @@ enum argument_opts {
 	OPT_BINARY = 'b',
 	OPT_UNICODE = 128,
 	OPT_DETACHED = 'd',
+	OPT_ALIGN = 'a'
 };
 
 static struct argp_option options[] = {
@@ -35,6 +37,9 @@ static struct argp_option options[] = {
 	{ "binary", OPT_BINARY, 0, 0, "Print the result in binary", 0 },
 	{ "unicode", OPT_UNICODE, 0, OPTION_ARG_OPTIONAL,
 	  "Print unicode characters", 0 },
+	{ "align", OPT_ALIGN, "EXPR", 0,
+	  "Print input expression's alignment according to alignment expression. Alignment expression should be power of 2, but it's not enforced",
+	  0 },
 	{ "detached", OPT_DETACHED, "EXPR", 0, "Execute single expression", 0 },
 	{ 0 }
 };
@@ -55,6 +60,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 		break;
 	case OPT_DETACHED:
 		arguments->detached_expr = arg;
+		break;
+	case OPT_ALIGN:
+		arguments->alignment_expr = arg;
 		break;
 	case ARGP_KEY_ARG:
 		if (state->arg_num > 0)

@@ -6,6 +6,7 @@
 .Nd prints result of some bitwise expression in a pretty format
 .Sh SYNOPSIS
 .Nm
+.Op Fl a Ar <EXPRESSION>
 .Op Fl b
 .Op Fl d Ar <EXPRESSION>
 .Op Fl u
@@ -23,6 +24,8 @@ Prints the result of some bitwise \fIEXPRESSION\fR. These are parsed through \fB
 Interactive mode can be exited by typing \fIexit\fR or \fIquit\fR.
 .Sh OPTIONS
 .Bl -tag -width Ds
+.It Fl a\ \fI<EXPRESSION>\fR, Fl -align=\fI<EXPRESSION>\fR
+Takes the evauluation from the \fB--detached\fR, \fBstdin\fR, or \fBinteractive\fR modes, and then aligns the output to the alignment expression. It helps if this alignment is a power of 2, but it's not enforced. Otherwise, all evaulation logic applies to the alignment expression.
 .It Fl b
 Appends binary representation of result to output.
 .It Fl d\ \fI<EXPRESSION>\fR, Fl -detached=\fI<EXPRESSION>\fR

@@ -26,11 +26,17 @@ static bool show_binary = false;
 
 #define P_MAX_EXP_LEN 512
 
-int evaluate(struct parser_context *ctx, const char *input, size_t len,
-	     bool print_expr)
+struct parse_expression {
+	const char *expr;
+	size_t len;
+};
+
+static int _eval(struct parser_context *ctx,
+		 const struct parse_expression *expr, uint64_t *out)
 {
-	uint64_t output = 0;
-	int err = parse(ctx, input, len, &output);
+	int err;
+
+	err = parse(ctx, expr->expr, expr->len, out);
 	if (err) {
 		switch (err) {
 		case PE_NOTHING_TO_PARSE:
@@ -45,23 +51,42 @@ int evaluate(struct parser_context *ctx, const char *input, size_t len,
 		default:
 			fputs("Unknown error ocurred.\n", stderr);
 		}
+	}
+
+	return err;
+}
+
+static int evaluate(struct parser_context *ctx, const char *expr, size_t len,
+		    bool print_expr, uint64_t alignment)
+{
+	int err;
+	uint64_t output = 0;
+
+	err = _eval(ctx, &(struct parse_expression){ expr, len }, &output);
+	if (err) {
 		return err;
 	}
 
 	if (print_expr) {
-		puts(input);
+		puts(expr);
 	}
 
 	print_set_stream(stdout);
 	print_number(output, uppercase_hex,
 		     (show_unicode) ? ENC_ALL : ENC_ASCII);
+
+	if (alignment) {
+		print_alignment(alignment, output, uppercase_hex);
+	}
+
 	if (show_binary) {
 		print_binary(output);
 	}
+
 	return err;
 }
 
-static int do_readline(struct parser_context *ctx)
+static int do_readline(struct parser_context *ctx, uint64_t alignment)
 {
 	char *input;
 
@@ -77,7 +102,7 @@ static int do_readline(struct parser_context *ctx)
 		}
 
 		add_history(input);
-		evaluate(ctx, input, strlen(input), false);
+		evaluate(ctx, input, strlen(input), false, alignment);
 		fflush(stdout);
 
 		free(input);
@@ -88,9 +113,10 @@ static int do_readline(struct parser_context *ctx)
 	return EXIT_SUCCESS;
 }
 
-static int do_stdin(struct parser_context *ctx)
+static int do_stdin(struct parser_context *ctx, uint64_t alignment)
 {
 #define BUF_SIZE 4096
+	int err;
 	ssize_t bytes_read = 0;
 	ssize_t expr_index = 0;
 	char expr[P_MAX_EXP_LEN] = { 0 };
@@ -122,7 +148,8 @@ static int do_stdin(struct parser_context *ctx)
 			}
 
 			if (read_buff[buff_index] == '\n') {
-				int err = evaluate(ctx, expr, expr_index, true);
+				err = evaluate(ctx, expr, expr_index, true,
+					       alignment);
 				if (!err) {
 					puts("");
 				}
@@ -148,7 +175,10 @@ static int do_stdin(struct parser_context *ctx)
 
 int main(int argc, char *argv[])
 {
+	int err;
 	char stdout_buff[4096] = { 0 };
+	uint64_t alignment = 0;
+
 	setvbuf(stdout, stdout_buff, _IOFBF, sizeof(stdout_buff));
 	setlocale(LC_CTYPE, "en_US.UTF-8");
 
@@ -169,17 +199,33 @@ int main(int argc, char *argv[])
 
 	struct parser_context *ctx = parser_new(&settings);
 
+	if (arguments.alignment_expr) {
+		err = _eval(ctx,
+			    &(struct parse_expression){
+				    arguments.alignment_expr,
+				    strlen(arguments.alignment_expr) },
+			    &alignment);
+		if (err) {
+			fprintf(stderr,
+				"Unable to parse the align expression.");
+			fflush(stdout);
+			parser_free(ctx);
+			return err;
+		}
+	}
+
 	if (arguments.detached_expr) {
-		int err = evaluate(ctx, arguments.detached_expr,
-				   strlen(arguments.detached_expr), false);
+		err = evaluate(ctx, arguments.detached_expr,
+			       strlen(arguments.detached_expr), false,
+			       alignment);
 		fflush(stdout);
 		parser_free(ctx);
 		return err;
 	}
 
 	if (isatty(0)) {
-		return do_readline(ctx);
+		return do_readline(ctx, alignment);
 	}
 
-	return do_stdin(ctx);
+	return do_stdin(ctx, alignment);
 }

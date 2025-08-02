@@ -259,3 +259,19 @@ void print_number(uint64_t num, bool uppercase_hex, int encoding_mask)
 	__print_hex(num, 16, uppercase_hex);
 	fputc('\n', stream);
 }
+
+void print_alignment(uint64_t alignment, uint64_t num, bool uppercase_hex)
+{
+	uint64_t mask = alignment - 1;
+	uint64_t up = (num + mask) & ~mask;
+	uint64_t down = num & ~mask;
+	ensure_stream();
+
+	fputs("algn d: 0x", stream);
+	__print_hex(down, 16, uppercase_hex);
+
+	fputs("\nalgn u: 0x", stream);
+	__print_hex(up, 16, uppercase_hex);
+
+	fprintf(stream, " (%lu blocks)\n", down / (alignment - 1) + 1);
+}

@@ -25,3 +25,4 @@ void print_set_stream(FILE *);
 void print_hex(bool, int, uint64_t);
 void print_binary(uint64_t number);
 void print_number(uint64_t num, bool uppercase_hex, int encoding_mask);
+void print_alignment(uint64_t alignment, uint64_t num, bool uppercase_hex);
