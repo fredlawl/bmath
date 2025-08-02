@@ -29,7 +29,7 @@ def gen_number():
     return gen_decimal() if r >= 0.4 else gen_hex()
 
 
-def gen_factor(depth):
+def gen_signed(depth):
     r = random.random()
     out = gen_number()
 
@@ -40,26 +40,24 @@ def gen_factor(depth):
         out = f"({gen_expr(depth + 1)})"
 
     r = random.random()
-    if r >= 0.9:
+    if r >= 0.999:
+        return f"+{out}"
+
+    if r >= 0.99:
         return f"~{out}"
+
+    if r >= 0.9:
+        return f"-{out}"
+
     return out
 
 
-def gen_term(depth):
-    op = [">>", "<<"]
-    r = random.random()
-    if r >= 0.3:
-        return gen_factor(depth)
-
-    return f"{gen_term(depth + 1)} {op[int(r * 100) % len(op)]} {gen_factor(depth)}"
-
-
 def gen_expr(depth):
-    op = ["^", "|", "&"]
+    op = ["|", "^", "&", "<<", ">>", "+", "-", "*", "%"]
     r = random.random()
     if r >= 0.4:
-        return gen_term(depth + 1)
-    return f"{gen_expr(depth + 1)} {op[int(r * 100) % len(op)]} {gen_term(depth + 1)}"
+        return gen_signed(depth + 1)
+    return f"{gen_expr(depth + 1)} {op[int(r * 100) % len(op)]} {gen_signed(depth + 1)}"
 
 
 def main(args):
