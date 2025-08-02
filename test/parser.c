@@ -200,7 +200,10 @@ ParameterizedTestParameters(parser, order_of_operations)
 		{ "1 & 2 & 3 & 4", 1 & 2 & 3 & 4 },
 		{ "1 | 2 | 3 | 4", 1 | 2 | 3 | 4 },
 		{ "1 ^ 2 ^ 3 ^ 4", 1 ^ 2 ^ 3 ^ 4 },
-
+		{ "1 + 2 + 3 + 4", 1 + 2 + 3 + 4 },
+		{ "1 - 2 - 3 - 4", 1 - 2 - 3 - 4 },
+		{ "1 * 2 * 3 * 4", 1 * 2 * 3 * 4 },
+		{ "1 % 2 % 3 % 4", 1 % 2 % 3 % 4 },
 	};
 #pragma GCC diagnostic pop
 	size_t nparams = sizeof(params) / sizeof(params[0]);
