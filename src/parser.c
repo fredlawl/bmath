@@ -41,6 +41,8 @@ enum token_type {
 	TOK_BITWISE_NOT,
 	TOK_SIGN,
 	TOK_FACTOR_OP,
+	TOK_FUNCTION,
+	TOK_COMMA,
 };
 
 static const char *lookup_token_name[] = {
@@ -48,7 +50,9 @@ static const char *lookup_token_name[] = {
 	[TOK_OP] = "|, ^, or &",     [TOK_SHIFT_OP] = "<<, or >>",
 	[TOK_LPAREN] = "(",	     [TOK_RPAREN] = ")",
 	[TOK_BITWISE_NOT] = "~",     [TOK_SIGN] = "+, or -",
-	[TOK_FACTOR_OP] = "*, or %",
+	[TOK_FACTOR_OP] = "*, or %", [TOK_FUNCTION] = "function",
+	[TOK_COMMA] = ",",
+
 };
 
 static inline const char *token_name(enum token_type tok)
@@ -68,6 +72,7 @@ static inline const char *token_name(enum token_type tok)
 #define ATTR_FACTOR_OP_MOD ATTR_FACTOR_OP_MUL + 1
 #define ATTR_SIGN_PLUS ATTR_FACTOR_OP_MOD + 1
 #define ATTR_SIGN_MINUS ATTR_SIGN_PLUS + 1
+#define ATTR_FUNCTION_ALIGN ATTR_SIGN_MINUS + 1
 #define ATTR_NULL UINT64_MAX
 
 struct token {
@@ -368,6 +373,10 @@ static struct token __lexer_get_next_token(struct lexer *lexer)
 			token.attr = ATTR_FACTOR_OP_MOD;
 			lexer->current_column++;
 			return token;
+		case ',':
+			token.type = TOK_COMMA;
+			lexer->current_column++;
+			return token;
 		default:
 			break;
 		}
@@ -383,6 +392,24 @@ static struct token __lexer_get_next_token(struct lexer *lexer)
 			token.type = TOK_SHIFT_OP;
 			token.attr = ATTR_RSHIFT;
 			lexer->current_column += 2;
+			return token;
+		}
+
+		if (current_character == 'a') {
+			int i = 0;
+			char next[] = { 'l', 'i', 'g', 'n', 0 };
+			while (lexer->line[++lexer->current_column] ==
+			       next[i++])
+				;
+
+			if (i != sizeof(next) / sizeof(next[0])) {
+				// TODO: this state system doesn't work if we have more functions. Having a trie to match is better
+				__lexical_error(lexer, "Illegal character");
+				return token;
+			}
+
+			token.type = TOK_FUNCTION;
+			token.attr = ATTR_FUNCTION_ALIGN;
 			return token;
 		}
 
@@ -427,6 +454,42 @@ static uint64_t expr_number(struct lexer *lexer)
 	return ret;
 }
 
+static uint64_t align(uint64_t x, uint64_t y)
+{
+	uint64_t mask = y - 1;
+	return x & ~mask;
+}
+
+static uint64_t expr_function(struct lexer *lexer)
+{
+	uint64_t ret = 0;
+	uint64_t op1, op2;
+	struct token tok;
+
+	if (lookahead_token.type != TOK_FUNCTION) {
+		return expr_number(lexer);
+	}
+
+	tok = lookahead_token;
+	__expect(lexer, TOK_FUNCTION);
+
+	__expect(lexer, TOK_LPAREN);
+	switch (tok.attr) {
+	case ATTR_FUNCTION_ALIGN:;
+		op1 = expr(lexer);
+		__expect(lexer, TOK_COMMA);
+		op2 = expr(lexer);
+		ret = align(op1, op2);
+		break;
+	default:
+		__lexical_error(lexer, "Unknown function");
+		return ret;
+	}
+	__expect(lexer, TOK_RPAREN);
+
+	return ret;
+}
+
 static uint64_t expr_signed(struct lexer *lexer)
 {
 #define MAX_STACK 10
@@ -454,7 +517,7 @@ static uint64_t expr_signed(struct lexer *lexer)
 			break;
 		default:
 			exit = true;
-			ret = expr_number(lexer);
+			ret = expr_function(lexer);
 		}
 	}
 
