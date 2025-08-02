@@ -5,7 +5,7 @@
 
 #include "argp.h"
 
-const char *argp_program_bug_address = "Frederick Lawler <fred@fredlawl.com>";
+const char *argp_program_bug_address = "Frederick Lawler <me@fred.software>";
 
 static char args_doc[] = "";
 
