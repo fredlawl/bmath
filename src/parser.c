@@ -40,13 +40,15 @@ enum token_type {
 	TOK_RPAREN,
 	TOK_BITWISE_NOT,
 	TOK_SIGN,
+	TOK_FACTOR_OP,
 };
 
 static const char *lookup_token_name[] = {
-	[TOK_NULL] = "null",	 [TOK_NUMBER] = "number",
-	[TOK_OP] = "&, |, or ^", [TOK_SHIFT_OP] = "<<, or >>",
-	[TOK_LPAREN] = "(",	 [TOK_RPAREN] = ")",
-	[TOK_BITWISE_NOT] = "~", [TOK_SIGN] = "+, or -"
+	[TOK_NULL] = "null",	     [TOK_NUMBER] = "number",
+	[TOK_OP] = "|, ^, or &",     [TOK_SHIFT_OP] = "<<, or >>",
+	[TOK_LPAREN] = "(",	     [TOK_RPAREN] = ")",
+	[TOK_BITWISE_NOT] = "~",     [TOK_SIGN] = "+, or -",
+	[TOK_FACTOR_OP] = "*, or %",
 };
 
 static inline const char *token_name(enum token_type tok)
@@ -62,7 +64,9 @@ static inline const char *token_name(enum token_type tok)
 #define ATTR_OP_AND ATTR_RSHIFT + 1
 #define ATTR_OP_OR ATTR_OP_AND + 1
 #define ATTR_OP_XOR ATTR_OP_OR + 1
-#define ATTR_SIGN_PLUS ATTR_OP_OR + 1
+#define ATTR_FACTOR_OP_MUL ATTR_OP_XOR + 1
+#define ATTR_FACTOR_OP_MOD ATTR_FACTOR_OP_MUL + 1
+#define ATTR_SIGN_PLUS ATTR_FACTOR_OP_MOD + 1
 #define ATTR_SIGN_MINUS ATTR_SIGN_PLUS + 1
 #define ATTR_NULL UINT64_MAX
 
@@ -96,6 +100,8 @@ static void __expect(struct lexer *lexer, enum token_type expected);
 
 static uint64_t expr_number(struct lexer *lexer);
 static uint64_t expr_signed(struct lexer *lexer);
+static uint64_t expr_factor(struct lexer *lexer);
+static uint64_t expr_add(struct lexer *lexer);
 static uint64_t expr_shift(struct lexer *lexer);
 static uint64_t expr_and(struct lexer *lexer);
 static uint64_t expr_xor(struct lexer *lexer);
@@ -352,6 +358,16 @@ static struct token __lexer_get_next_token(struct lexer *lexer)
 			token.attr = ATTR_SIGN_MINUS;
 			lexer->current_column++;
 			return token;
+		case '*':
+			token.type = TOK_FACTOR_OP;
+			token.attr = ATTR_FACTOR_OP_MUL;
+			lexer->current_column++;
+			return token;
+		case '%':
+			token.type = TOK_FACTOR_OP;
+			token.attr = ATTR_FACTOR_OP_MOD;
+			lexer->current_column++;
+			return token;
 		default:
 			break;
 		}
@@ -459,12 +475,46 @@ static uint64_t expr_signed(struct lexer *lexer)
 	return ret;
 }
 
-static uint64_t expr_add(struct lexer *lexer)
+static uint64_t expr_factor(struct lexer *lexer)
 {
 	uint64_t left, right;
 	struct token tok;
 
 	left = expr_signed(lexer);
+	while (true) {
+		if (lookahead_token.type != TOK_FACTOR_OP) {
+			break;
+		}
+
+		tok = lookahead_token;
+		__expect(lexer, lookahead_token.type);
+		right = expr_signed(lexer);
+		switch (tok.attr) {
+		case ATTR_FACTOR_OP_MUL:
+			left *= right;
+			break;
+		case ATTR_FACTOR_OP_MOD:
+			if (right == 0) {
+				__lexical_error(lexer, "Division by zero");
+				return left;
+			}
+			left %= right;
+			break;
+		default:
+			__general_error(lexer,
+					"Something went wrong parsing term.\n");
+		}
+	}
+
+	return left;
+}
+
+static uint64_t expr_add(struct lexer *lexer)
+{
+	uint64_t left, right;
+	struct token tok;
+
+	left = expr_factor(lexer);
 	while (true) {
 		if (lookahead_token.type != TOK_SIGN) {
 			break;
