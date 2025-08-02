@@ -220,6 +220,7 @@ perf.data
 perf.data.old
 out.perf
 flamegraph.svg
+flamegraph-reverse.svg
 perf.folded
 test-input
 dbg
@@ -231,3 +232,4 @@ bmath
 bmath_test
 output
 FlameGraph
+gdb.txt
