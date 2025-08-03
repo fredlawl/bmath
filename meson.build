@@ -41,6 +41,8 @@ libbmath = shared_library(
   'bmath',
   'src/parser.c',
   'src/print.c',
+  'src/token.c',
+  'src/functions.c',
   dependencies: libbmath_deps,
   install: true,
   soversion: '0',
@@ -53,6 +55,7 @@ if criterion_dep.found()
   test_exe = executable(
     'bmath_test',
     'test/parser.c',
+    'test/functions.c',
     install: false,
     dependencies: [criterion_dep],
     link_with: libbmath,

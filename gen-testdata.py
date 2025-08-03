@@ -4,6 +4,7 @@ import random
 import os
 import sys
 import argparse
+from bisect import bisect_left, bisect
 
 # Constraints
 MIN_NUM_BYTES = 1
@@ -29,7 +30,7 @@ def gen_number():
     return gen_decimal() if r >= 0.4 else gen_hex()
 
 
-def gen_signed(depth):
+def gen_signed(depth, ops, ops_weights):
     r = random.random()
     out = gen_number()
 
@@ -37,7 +38,7 @@ def gen_signed(depth):
         return out
 
     if r >= 0.3:
-        out = f"({gen_expr(depth + 1)})"
+        out = f"({gen_expr(depth + 1, ops, ops_weights)})"
 
     r = random.random()
     if r >= 0.999:
@@ -52,18 +53,36 @@ def gen_signed(depth):
     return out
 
 
-def gen_expr(depth):
-    op = ["|", "^", "&", "<<", ">>", "+", "-", "*", "%"]
+def calc_op_weights():
+    op = ["^", "&", "|", "<<", ">>", "+", "-", "*", "%"]
+    weights = [0.60, 0.70, 0.80, 0.30, 0.20, 0.10, 0.10, 0.05, 0.005]
+    weights_sum = sum(weights)
+
+    for i in range(0, len(weights)):
+        weights[i] /= weights_sum
+
+    for i in range(1, len(weights)):
+        weights[i] += weights[i - 1]
+
+    # print(weights)
+    return (op, weights)
+
+
+def gen_expr(depth, ops, ops_weights):
     r = random.random()
-    if r >= 0.4:
-        return gen_signed(depth + 1)
-    return f"{gen_expr(depth + 1)} {op[int(r * 100) % len(op)]} {gen_signed(depth + 1)}"
+    idx = bisect_left(ops_weights, r)
+
+    r2 = random.random()
+    if r2 >= 0.4:
+        return gen_signed(depth + 1, ops, ops_weights)
+    return f"{gen_expr(depth + 1, ops, ops_weights)} {ops[idx]} {gen_signed(depth + 1, ops, ops_weights)}"
 
 
 def main(args):
     random.seed(args.seed)
+    ops, ops_weights = calc_op_weights()
     for i in range(0, args.iterations):
-        sys.stdout.write(f"{gen_expr(0)}\n")
+        sys.stdout.write(f"{gen_expr(0, ops, ops_weights)}\n")
     sys.stdout.flush()
     return 0
 

@@ -188,6 +188,7 @@ int main(int argc, char *argv[])
 	arguments.should_uppercase_hex = false;
 	arguments.should_show_unicode = false;
 	arguments.print_binary = false;
+	arguments.alignment_expr = NULL;
 
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
