@@ -36,7 +36,7 @@ Clone this repo, `cd` into the cloned directory, and then run the following comm
 ## Usage
 
 ```
-Usage: bmath [-u?V] [-d EXPR] [--detached=EXPR] [--uppercase] [--unicode] [--binary]
+Usage: bmath [-u?V] [-a EXPR] [-d EXPR] [--detached=EXPR] [--uppercase] [--unicode] [--binary]
             [--help] [--usage] [--version]
 
 ```
@@ -103,8 +103,10 @@ Hex64: 0x0000000000020000
 expr = signed, op, signed
      | signed ;
 signed = number
-       | paren, expr, rparen
+       | lparen, expr, rparen
        | { logic_not | sign }, signed
+       | function
+function = function_name, lparen, expr, {",", expr }, rparen
 number = digit, { digit }
        | hex ;
 digit = [0-9], { [0-9] } ;
@@ -114,6 +116,23 @@ lparen = "(" ;
 rparen = ")" ;
 logic_not = "~" ;
 sign = "-" | "+" ;
+
+Functions:
+align(x, align_to)
+    Aligns x to align_to. align_to should be a power of two, but is not
+    enforced.
+
+align_down(x, align_to)
+    Same as align() except the result is rounded down to nearest alginment.
+
+bswap(x)
+    Swaps the byte order of x. 16, 32, and 64 modes are supported respectfully.
+
+mask(num_bytes)
+    Creates a mask of num_bytes. num_bytes must be in range of [0, 8].
+
+popcnt(x)
+    Counts the number of 1's set in x.
 
 Order of operations:
 +------------+

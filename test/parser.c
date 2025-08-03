@@ -217,8 +217,43 @@ ParameterizedTest(struct expr_expected_params *param, parser,
 	check_basic(param, __func__);
 }
 
+// TODO: Should reconsider a design such that expect next token is mocked
+// such that the next token is next in a list. That's a better way to test,
+// than doing all these parses.
+ParameterizedTestParameters(parser, functions)
+{
+	static struct expr_expected_err_params params[] = {
+		{ "a()", 0, PE_PARSE_ERROR },
+		{ "align)", 0, PE_PARSE_ERROR },
+		{ "align(", 0, PE_PARSE_ERROR },
+		{ "align(7,8", 0, PE_PARSE_ERROR },
+		{ "align(7,)", 0, PE_PARSE_ERROR },
+		{ "align(7,8)", 8, 0 },
+		{ "22+align(7,8)+22", 8 + 22 * 2, 0 },
+		{ "align(7,1<<3)", 8, 0 },
+		{ "align(1<<3-1,1<<3)", 8, 0 },
+		{ "align(mask(2),1<<3)", 65536, 0 },
+		{ "align(7,8,9)", 0, PE_PARSE_ERROR },
+		{ "align_down(7,8)", 0, 0 },
+		{ "mask(2)", 0xffff, 0 },
+		{ "mask()", 0, 0 },
+		{ "bswap(0xabcd)", 0xcdab, 0 },
+		{ "popcnt(3)", 2, 0 },
+	};
+	size_t nparams = sizeof(params) / sizeof(params[0]);
+	return cr_make_param_array(struct expr_expected_err_params, params,
+				   nparams);
+}
+
+ParameterizedTest(struct expr_expected_err_params *param, parser, functions)
+{
+	check(param, __func__);
+}
+
 ParameterizedTestParameters(parser, verify_concat_expressions)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wparentheses"
 	static struct expr_expected_params params[] = {
 		{ "1 | 3 << 1 | 3", 1 | 3 << 1 | 3 },
 		{ "(1 << 0) | (1 << 1)", (1 << 0) | (1 << 1) },
@@ -230,7 +265,12 @@ ParameterizedTestParameters(parser, verify_concat_expressions)
 		{ "(1 << 0) & 0x01", (1 << 0) & 0x01 },
 		{ "0x01 & (1 << 0) & 0x0", 0x01 & (1 << 0) & 0x0 },
 		{ "1 << 1 << 0", 1 << 1 << 0 },
+		{ "(67044172665631171 & 0x93 - 5519551265853101 % 15351520200696815) | (41514017200852255 & (473435211))",
+		  (67044172665631171 &
+		   0x93 - 5519551265853101 % 15351520200696815) |
+			  (41514017200852255 & (473435211)) },
 	};
+#pragma GCC diagnostic pop
 	size_t nparams = sizeof(params) / sizeof(params[0]);
 	return cr_make_param_array(struct expr_expected_params, params,
 				   nparams);
