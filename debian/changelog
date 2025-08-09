@@ -1,3 +1,11 @@
+bmath (2.0.0) unstable; urgency=medium
+
+  * signed numbers support added
+  * +, -, *, and % operators added
+  * align, align_down, bswap, mask, and popcnt functions added
+
+ -- Frederick Lawler <me@fred.software>  Sat, 09 Aug 2025 15:22:43 -0500
+
 bmath (1.0.6) unstable; urgency=medium
 
   * Users can use other logging streams than stdout/err

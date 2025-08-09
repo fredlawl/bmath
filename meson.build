@@ -1,7 +1,7 @@
 # for devel: meson install --tags devel
 # for deployment: meson install --tags runtime,man
 # for test: meson test
-project('bmath', 'c', version: '1.0.6', default_options: ['c_std=c11'])
+project('bmath', 'c', version: '2.0.0', default_options: ['c_std=c11'])
 
 add_project_arguments(
   [
@@ -45,8 +45,8 @@ libbmath = shared_library(
   'src/functions.c',
   dependencies: libbmath_deps,
   install: true,
-  soversion: '0',
-  version: '0.0.2',
+  soversion: '1',
+  version: '1.0.0',
 )
 
 # Test
