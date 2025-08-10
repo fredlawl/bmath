@@ -7,10 +7,10 @@
 
 const char *argp_program_bug_address = "Frederick Lawler <me@fred.software>";
 
-static char args_doc[] = "";
+static char args_doc[] = "[EXPR]";
 
 static char doc[] = "\nUsage examples:"
-		    "\n\t./bmath -d \"0x001\""
+		    "\n\t./bmath \"0x001\""
 		    "\n\t./bmath < input-file"
 		    "\n\t./bmath"
 		    "\n\nSee bmath(1) for detailed examples and explinations.";
@@ -27,20 +27,16 @@ enum argument_opts {
 	OPT_UPPERCASE = 'u',
 	OPT_BINARY = 'b',
 	OPT_UNICODE = 128,
-	OPT_DETACHED = 'd',
 	OPT_ALIGN = 'a'
 };
 
 static struct argp_option options[] = {
-	{ "uppercase", OPT_UPPERCASE, 0, OPTION_ARG_OPTIONAL,
-	  "Uppercase hex output", 0 },
+	{ "uppercase", OPT_UPPERCASE, 0, 0, "Uppercase hex output", 0 },
 	{ "binary", OPT_BINARY, 0, 0, "Print the result in binary", 0 },
-	{ "unicode", OPT_UNICODE, 0, OPTION_ARG_OPTIONAL,
-	  "Print unicode characters", 0 },
+	{ "unicode", OPT_UNICODE, 0, 0, "Print unicode characters", 0 },
 	{ "align", OPT_ALIGN, "EXPR", 0,
 	  "Print input expression's alignment according to alignment expression. Alignment expression should be power of 2, but it's not enforced",
 	  0 },
-	{ "detached", OPT_DETACHED, "EXPR", 0, "Execute single expression", 0 },
 	{ 0 }
 };
 
@@ -58,22 +54,15 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 	case OPT_UNICODE:
 		arguments->should_show_unicode = true;
 		break;
-	case OPT_DETACHED:
-		arguments->detached_expr = arg;
-		break;
 	case OPT_ALIGN:
 		arguments->alignment_expr = arg;
 		break;
 	case ARGP_KEY_ARG:
-		if (state->arg_num > 0)
-			argp_usage(state);
-
-		break;
-	case ARGP_KEY_END:
-		if (state->arg_num > 0)
-			argp_usage(state);
-
-		break;
+		if (state->arg_num == 0) {
+			arguments->detached_expr = arg;
+			break;
+		}
+		return ARGP_ERR_UNKNOWN;
 	default:
 		return ARGP_ERR_UNKNOWN;
 	}

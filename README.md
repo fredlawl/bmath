@@ -36,65 +36,63 @@ Clone this repo, `cd` into the cloned directory, and then run the following comm
 ## Usage
 
 ```
-Usage: bmath [-u?V] [-a EXPR] [-d EXPR] [--detached=EXPR] [--uppercase] [--unicode] [--binary]
-            [--help] [--usage] [--version]
-
+bmath [-a <EXPRESSION>] [-b] [-u] [--unicode] [EXPRESSION]
+bmath [--help]
+bmath [--usage]
+bmath [-V]
 ```
 
 Run `./bmath` to run the program in interactive mode. To exit, use `ctrl + c`,
 or type in "quit" or "exit".
 
-### Example Expressions
+Pass a positional argument to run in
+non-interactive mode:
 
-> **NOTE**: Bmath runs in interactive mode by default. The "-d" argument is
-used to run expressions one by one in non-interactive (detached) mode.
+```sh
+bmath "1"
+```
 
-```shell
-$ ./bmath -d "1 << 6"
+Optionally, pipe stdin:
+
+```sh
+bmath < /path/to/file
+echo "1" | bmath
+```
+
+### Examples
+
+```sh
+bmath "1 << 6"
   Dec: 64
  Char: @
   Hex: 0x40
 Hex16: 0x0040
 Hex32: 0x00000040
 Hex64: 0x0000000000000040
-
 ```
 
 Also supports hex conversions:
 
-```shell
-$ ./bmath -d "0x40"
+```sh
+bmath "0x40"
   Dec: 64
  Char: @
   Hex: 0x40
 Hex16: 0x0040
 Hex32: 0x00000040
 Hex64: 0x0000000000000040
-
-```
-
-```shell
-$ ./bmath -d "0x1 | 0x2"
-  Dec: 3
- Char: <special>
-  Hex: 0x3
-Hex16: 0x0003
-Hex32: 0x00000003
-Hex64: 0x0000000000000003
-
 ```
 
 When a value is calculated greater than unsigned 16-bit integer:
 
-```shell
-$ ./bmath -d "1 << 17"
+```sh
+bmath "1 << 17"
   Dec: 131072
  Char: Exceeded
   Hex: 0x20000
 Hex16: Exceeded
 Hex32: 0x00020000
 Hex64: 0x0000000000020000
-
 ```
 
 ## Syntax
