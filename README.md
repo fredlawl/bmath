@@ -14,14 +14,18 @@ This program assumes little-endian system, but big-endian input.
 
 #### Linux
 
-1. (test suite only) [Install Criterion](https://criterion.readthedocs.io/en/master/setup.html)
+1. libreadline
+2. libtinfo
+1. [Install Unity](https://github.com/ThrowTheSwitch/Unity/tree/master) (tests only!)
 
 ### Compile & Install
 
 Clone this repo, `cd` into the cloned directory, and then run the following commands:
 
 1. `meson setup --buildtype=release build`
-2. `sudo meson install -C build --tags runtime,man`
+2. `meson compile -C build`
+3. `meson test -C build` (if you want to run the tests)
+3. `sudo meson install -C build --tags runtime,man`
 
 ## Usage
 

@@ -1,113 +1,114 @@
-#include <assert.h>
-#include <criterion/alloc.h>
-#include <criterion/criterion.h>
-#include <criterion/internal/assert.h>
-#include <criterion/logging.h>
-#include <criterion/parameterized.h>
+#define UNITY_SUPPORT_TEST_CASES
+
 #include <inttypes.h>
 #include <stdint.h>
+#include <unity/unity.h>
 
 #include "../src/functions.h"
 
 struct func_params {
+	const char *name;
 	uint64_t expected;
 	enum func_err err;
 	int argc;
 	uint64_t argv[FUNCTIONS_MAX_OPS];
 };
 
-static void setup(void)
+static void check(struct func_params *param, bmath_func_t func)
+{
+	char call_msg[256];
+	char out_msg[256];
+	uint64_t out_value = 0;
+	enum func_err ret;
+
+	sprintf(call_msg, "%s: ret is expected", param->name);
+	sprintf(out_msg, "%s: result is expected", param->name);
+
+	ret = func(&out_value, param->argc, param->argv);
+	TEST_ASSERT_EQUAL_MESSAGE(param->err, ret, call_msg);
+	TEST_ASSERT_EQUAL_MESSAGE(param->expected, out_value, out_msg);
+}
+
+void setUp(void)
 {
 }
 
-static void teardown(void)
+void tearDown(void)
 {
 }
 
-static void check(const char *test_func, struct func_params *param,
-		  bmath_func_t func)
+void test_align()
 {
-	uint64_t ret = 0;
-	enum func_err err;
-
-	err = func(&ret, param->argc, param->argv);
-	cr_assert_eq(err, param->err, "%s: ret == %d", test_func, err);
-	cr_assert_eq(ret, param->expected, "%s: expected == %lu", test_func,
-		     ret);
-}
-
-TestSuite(functions, .init = setup, .fini = teardown);
-
-ParameterizedTestParameters(functions, align_test)
-{
-	static struct func_params params[] = { { 0, FUNC_EINVAL, 0, { 0 } },
-					       { 0, FUNC_EINVAL, 1, { 0 } },
-					       { 0, FUNC_ESUCCESS, 2, { 0 } } };
-	size_t nparams = sizeof(params) / sizeof(params[0]);
-	return cr_make_param_array(struct func_params, params, nparams);
-}
-
-ParameterizedTest(struct func_params *param, functions, align_test)
-{
-	check(__func__, param, align);
-}
-
-ParameterizedTestParameters(functions, align_down_test)
-{
-	static struct func_params params[] = { { 0, FUNC_EINVAL, 0, { 0 } },
-					       { 0, FUNC_EINVAL, 1, { 0 } },
-					       { 0, FUNC_ESUCCESS, 2, { 0 } } };
-	size_t nparams = sizeof(params) / sizeof(params[0]);
-	return cr_make_param_array(struct func_params, params, nparams);
-}
-
-ParameterizedTest(struct func_params *param, functions, align_down_test)
-{
-	check(__func__, param, align_down);
-}
-
-ParameterizedTestParameters(functions, mask_test)
-{
-	static struct func_params params[] = { { 0, FUNC_ESUCCESS, 0, { 0 } },
-					       { 0, FUNC_ESUCCESS, 1, { 0 } },
-					       { 0, FUNC_ERANGE, 1, { 9 } },
-					       { 0, FUNC_ERANGE, 1, { -1 } },
-					       { 0, FUNC_EINVAL, 2, { 0 } } };
-	size_t nparams = sizeof(params) / sizeof(params[0]);
-	return cr_make_param_array(struct func_params, params, nparams);
-}
-
-ParameterizedTest(struct func_params *param, functions, mask_test)
-{
-	check(__func__, param, mask);
-}
-
-ParameterizedTestParameters(functions, popcnt_test)
-{
-	static struct func_params params[] = {
-		{ 0, FUNC_EINVAL, 0, { 0 } },
-		{ 0, FUNC_ESUCCESS, 1, { 0 } },
+	struct func_params params[] = {
+		{ "no args", 0, FUNC_EINVAL, 0, { 0 } },
+		{ "one arg", 0, FUNC_EINVAL, 1, { 0 } },
+		{ "correct args", 0, FUNC_ESUCCESS, 2, { 0 } },
 	};
-	size_t nparams = sizeof(params) / sizeof(params[0]);
-	return cr_make_param_array(struct func_params, params, nparams);
+
+	for (size_t i = 0; i < sizeof(params) / sizeof(params[0]); i++) {
+		check(&params[i], align);
+	}
 }
 
-ParameterizedTest(struct func_params *param, functions, popcnt_test)
+void test_align_down()
 {
-	check(__func__, param, popcnt);
-}
-
-ParameterizedTestParameters(functions, bswap_test)
-{
-	static struct func_params params[] = {
-		{ 0, FUNC_EINVAL, 0, { 0 } },
-		{ 0, FUNC_ESUCCESS, 1, { 0 } },
+	struct func_params params[] = {
+		{ "no args", 0, FUNC_EINVAL, 0, { 0 } },
+		{ "one arg", 0, FUNC_EINVAL, 1, { 0 } },
+		{ "correct args", 0, FUNC_ESUCCESS, 2, { 0 } }
 	};
-	size_t nparams = sizeof(params) / sizeof(params[0]);
-	return cr_make_param_array(struct func_params, params, nparams);
+
+	for (size_t i = 0; i < sizeof(params) / sizeof(params[0]); i++) {
+		check(&params[i], align_down);
+	}
 }
 
-ParameterizedTest(struct func_params *param, functions, bswap_test)
+void test_mask()
 {
-	check(__func__, param, bswap);
+	struct func_params params[] = {
+		{ "no args", 0, FUNC_ESUCCESS, 0, { 0 } },
+		{ "one arg", 0, FUNC_ESUCCESS, 1, { 0 } },
+		{ "over arg 8", 0, FUNC_ERANGE, 1, { 9 } },
+		{ "less arg 0", 0, FUNC_ERANGE, 1, { -1 } },
+		{ "multiple args", 0, FUNC_EINVAL, 2, { 0 } }
+	};
+
+	for (size_t i = 0; i < sizeof(params) / sizeof(params[0]); i++) {
+		check(&params[i], mask);
+	}
+}
+
+void test_popcnt()
+{
+	struct func_params params[] = {
+		{ "no args", 0, FUNC_EINVAL, 0, { 0 } },
+		{ "one arg", 0, FUNC_ESUCCESS, 1, { 0 } }
+	};
+
+	for (size_t i = 0; i < sizeof(params) / sizeof(params[0]); i++) {
+		check(&params[i], popcnt);
+	}
+}
+
+void test_bswap()
+{
+	struct func_params params[] = {
+		{ "no args", 0, FUNC_EINVAL, 0, { 0 } },
+		{ "one arg", 0, FUNC_ESUCCESS, 1, { 0 } },
+	};
+
+	for (size_t i = 0; i < sizeof(params) / sizeof(params[0]); i++) {
+		check(&params[i], popcnt);
+	}
+}
+
+int main(void)
+{
+	UNITY_BEGIN();
+	RUN_TEST(test_align);
+	RUN_TEST(test_align_down);
+	RUN_TEST(test_mask);
+	RUN_TEST(test_popcnt);
+	RUN_TEST(test_bswap);
+	return UNITY_END();
 }

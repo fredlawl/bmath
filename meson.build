@@ -50,18 +50,35 @@ libbmath = shared_library(
 )
 
 # Test
-criterion_dep = dependency('criterion', required: false)
-if criterion_dep.found()
-  test_exe = executable(
-    'bmath_test',
+unity_dep = dependency('unity', static: true, required: false)
+if unity_dep.found() 
+  parser_test = executable(
+    'bmath_parser_test',
     'test/parser.c',
-    'test/functions.c',
     install: false,
-    dependencies: [criterion_dep],
+    dependencies: [unity_dep],
     link_with: libbmath,
   )
 
-  test('everything', test_exe, args: [], verbose: true)
+  functions_test = executable(
+    'bmath_functions_test',
+    'test/functions.c',
+    install: false,
+    dependencies: [unity_dep],
+    link_with: libbmath,
+  )
+
+  conversions_test = executable(
+    'bmath_conversions_test',
+    'test/conversions.c',
+    install: false,
+    dependencies: [unity_dep],
+    link_with: libbmath,
+  )
+
+  test('parser', parser_test, args: [], verbose: true)
+  test('functions', functions_test, args: [], verbose: true)
+  test('conversions', conversions_test, args: [], verbose: true)
 endif
 
 # todo: figure out argp dep for non-gnu platforms
