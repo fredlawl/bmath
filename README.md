@@ -12,16 +12,6 @@ This program assumes little-endian system, but big-endian input.
 
 ### Prerequisites
 
-#### MacOS
-
-Using homebrew, install the following libraries:
-
-1. `brew install argp-standalone`
-2. `brew install readline`
-3. `brew install meson`
-4. `brew install iconv`
-5. (test suite only) `brew install criterion`
-
 #### Linux
 
 1. (test suite only) [Install Criterion](https://criterion.readthedocs.io/en/master/setup.html)
