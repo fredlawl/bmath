@@ -239,18 +239,18 @@ static struct lexer __init_lexer(struct parser_context *ctx, const char *line,
 static struct token __lexer_parse_number(struct lexer *lexer)
 {
 	char current_char;
-	struct token tok = { .type = TOK_NULL, .attr = ATTR_NULL };
-
 	uint64_t result = 0;
-	const char *line_reader = lexer->line + lexer->current_column;
+	char *line_reader = (char *)lexer->line + lexer->current_column;
+	struct token tok = { .attr = 0, .type = TOK_NULL, .namelen = 0 };
 
 	while ((current_char = *line_reader++) && __is_digit(current_char)) {
 		result = result * 10 + (current_char - '0');
-		lexer->current_column++;
 	}
 
-	tok.type = TOK_NUMBER;
+	lexer->current_column = line_reader - lexer->line - 1;
+
 	tok.attr = result;
+	tok.type = TOK_NUMBER;
 	return tok;
 }
 
@@ -470,11 +470,12 @@ static uint64_t expr_function(struct lexer *lexer)
 static uint64_t expr_signed(struct lexer *lexer)
 {
 #define MAX_STACK 10
-	struct token stack[MAX_STACK] = { 0 };
+	static struct token stack[MAX_STACK] = { 0 };
 	struct token tok;
 
 	uint64_t ret;
 	int i = -1;
+	int in_loop = 0;
 	bool exit = false;
 
 	while (!exit) {
@@ -482,6 +483,10 @@ static uint64_t expr_signed(struct lexer *lexer)
 		switch (tok.type) {
 		case TOK_BITWISE_NOT:
 		case TOK_SIGN:
+			if (!in_loop) {
+				in_loop = 1;
+				memset(stack, 0, sizeof(stack));
+			}
 			i++;
 			if (i >= MAX_STACK) {
 				__lexical_error(
