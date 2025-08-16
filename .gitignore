@@ -233,3 +233,5 @@ bmath_test
 output
 FlameGraph
 gdb.txt
+a_perf_test
+perf_report

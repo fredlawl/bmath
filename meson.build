@@ -12,7 +12,6 @@ add_project_arguments(
     '-D_FORTIFY_SOURCE=2',
     '-fstack-protector-strong',
     '-fstack-clash-protection',
-    '-O2',
   ],
   language: ['c'],
 )

@@ -90,34 +90,25 @@ static uint64_t expr(struct lexer *lexer);
 size_t str_hex_to_uint64(const char *input, ssize_t input_length,
 			 uint64_t *result)
 {
-	char current_char;
 	ssize_t bytes_parsed = 0;
-
 	const char *input_start = input;
 
 	if (*input_start++ != '0') {
 		errno = EINVAL;
-		return bytes_parsed;
+		return 0;
 	}
 
 	if (!__is_x(*input_start++)) {
 		errno = EINVAL;
-		return bytes_parsed;
+		return 0;
 	}
 
-	bytes_parsed += 2;
-
 	*result = 0;
-	do {
-		current_char = *input_start++;
+	while (__is_allowed_hex(*input_start)) {
+		*result = (*result << 4) + __hex_to_value(*input_start++);
+	}
 
-		if (!__is_allowed_hex(current_char)) {
-			return bytes_parsed;
-		}
-
-		*result = (*result << 4) + __hex_to_value(current_char);
-	} while (bytes_parsed++ < input_length);
-
+	bytes_parsed += input_start - input;
 	if (bytes_parsed > input_length) {
 		errno = E2BIG;
 		return 0;
@@ -238,19 +229,18 @@ static struct lexer __init_lexer(struct parser_context *ctx, const char *line,
 
 static struct token __lexer_parse_number(struct lexer *lexer)
 {
-	char current_char;
-	struct token tok = { .type = TOK_NULL, .attr = ATTR_NULL };
-
 	uint64_t result = 0;
-	const char *line_reader = lexer->line + lexer->current_column;
+	char *line_reader = (char *)lexer->line + lexer->current_column;
+	struct token tok = { .attr = 0, .type = TOK_NULL, .namelen = 0 };
 
-	while ((current_char = *line_reader++) && __is_digit(current_char)) {
-		result = result * 10 + (current_char - '0');
-		lexer->current_column++;
+	while (__is_digit(*line_reader)) {
+		result = result * 10 + (*line_reader++ - '0');
 	}
 
-	tok.type = TOK_NUMBER;
+	lexer->current_column = line_reader - lexer->line;
+
 	tok.attr = result;
+	tok.type = TOK_NUMBER;
 	return tok;
 }
 
@@ -313,21 +303,24 @@ static struct token __lexer_get_next_token(struct lexer *lexer)
 			if (__is_start_of_hex(current_character,
 					      peek_character)) {
 				return __lexer_parse_hex(lexer);
-			} else {
-				return __lexer_parse_number(lexer);
 			}
+			return __lexer_parse_number(lexer);
 		}
 
 		switch (current_character) {
-		case ' ':
-		case '\n':
 		case '\t':
+		case '\n':
 		case '\r':
+		case ' ':
 			lexer->current_column++;
 			continue;
-		case '~':
-			token.type = TOK_BITWISE_NOT;
-			token.attr = ATTR_BITWISE_NOT;
+		case '%':
+			token.type = TOK_FACTOR_OP;
+			token.attr = ATTR_FACTOR_OP_MOD;
+			goto out;
+		case '&':
+			token.type = TOK_OP;
+			token.attr = ATTR_OP_AND;
 			goto out;
 		case '(':
 			token.type = TOK_LPAREN;
@@ -337,53 +330,51 @@ static struct token __lexer_get_next_token(struct lexer *lexer)
 			token.type = TOK_RPAREN;
 			token.attr = ATTR_RPAREN;
 			goto out;
-		case '&':
-			token.type = TOK_OP;
-			token.attr = ATTR_OP_AND;
-			goto out;
-		case '|':
-			token.type = TOK_OP;
-			token.attr = ATTR_OP_OR;
-			goto out;
-		case '^':
-			token.type = TOK_OP;
-			token.attr = ATTR_OP_XOR;
+		case '*':
+			token.type = TOK_FACTOR_OP;
+			token.attr = ATTR_FACTOR_OP_MUL;
 			goto out;
 		case '+':
 			token.type = TOK_SIGN;
 			token.attr = ATTR_SIGN_PLUS;
 			goto out;
+		case ',':
+			token.type = TOK_COMMA;
+			goto out;
 		case '-':
 			token.type = TOK_SIGN;
 			token.attr = ATTR_SIGN_MINUS;
 			goto out;
-		case '*':
-			token.type = TOK_FACTOR_OP;
-			token.attr = ATTR_FACTOR_OP_MUL;
+		case '<':
+			if (peek_character == '<') {
+				token.type = TOK_SHIFT_OP;
+				token.attr = ATTR_LSHIFT;
+				token.namelen = 2;
+				goto out;
+			}
+			break;
+		case '>':
+			if (peek_character == '>') {
+				token.type = TOK_SHIFT_OP;
+				token.attr = ATTR_RSHIFT;
+				token.namelen = 2;
+				goto out;
+			}
+			break;
+		case '^':
+			token.type = TOK_OP;
+			token.attr = ATTR_OP_XOR;
 			goto out;
-		case '%':
-			token.type = TOK_FACTOR_OP;
-			token.attr = ATTR_FACTOR_OP_MOD;
+		case '|':
+			token.type = TOK_OP;
+			token.attr = ATTR_OP_OR;
 			goto out;
-		case ',':
-			token.type = TOK_COMMA;
+		case '~':
+			token.type = TOK_BITWISE_NOT;
+			token.attr = ATTR_BITWISE_NOT;
 			goto out;
 		default:
 			break;
-		}
-
-		if (current_character == '<' && peek_character == '<') {
-			token.type = TOK_SHIFT_OP;
-			token.attr = ATTR_LSHIFT;
-			token.namelen = 2;
-			goto out;
-		}
-
-		if (current_character == '>' && peek_character == '>') {
-			token.type = TOK_SHIFT_OP;
-			token.attr = ATTR_RSHIFT;
-			token.namelen = 2;
-			goto out;
 		}
 
 		__lexical_error(lexer, "Illegal character");
@@ -428,7 +419,7 @@ static uint64_t expr_number(struct lexer *lexer)
 static uint64_t expr_function(struct lexer *lexer)
 {
 	int err = 0;
-	uint64_t ops[FUNCTIONS_MAX_OPS] = { 0 };
+	static uint64_t ops[FUNCTIONS_MAX_OPS] = { 0 };
 	uint64_t ret = 0;
 	size_t i;
 	bmath_func_t func;
@@ -437,6 +428,8 @@ static uint64_t expr_function(struct lexer *lexer)
 	if (lexer->lookahead_token.type != TOK_FUNCTION) {
 		return expr_number(lexer);
 	}
+
+	memset(ops, 0, sizeof(ops));
 
 	tok = lexer->lookahead_token;
 	__expect(lexer, TOK_FUNCTION);
@@ -470,18 +463,22 @@ static uint64_t expr_function(struct lexer *lexer)
 static uint64_t expr_signed(struct lexer *lexer)
 {
 #define MAX_STACK 10
-	struct token stack[MAX_STACK] = { 0 };
+	static struct token stack[MAX_STACK] = { 0 };
 	struct token tok;
 
 	uint64_t ret;
 	int i = -1;
-	bool exit = false;
+	int in_loop = 0;
 
-	while (!exit) {
+	while (1) {
 		tok = lexer->lookahead_token;
 		switch (tok.type) {
 		case TOK_BITWISE_NOT:
 		case TOK_SIGN:
+			if (!in_loop) {
+				in_loop = 1;
+				memset(stack, 0, sizeof(stack));
+			}
 			i++;
 			if (i >= MAX_STACK) {
 				__lexical_error(
@@ -493,15 +490,17 @@ static uint64_t expr_signed(struct lexer *lexer)
 			__expect(lexer, lexer->lookahead_token.type);
 			break;
 		default:
-			exit = true;
 			ret = expr_function(lexer);
+			goto next;
 		}
 	}
 
+next:
 	for (int j = i; j >= 0; j--) {
 		switch (stack[j].type) {
 		case TOK_BITWISE_NOT:
 			ret = ~ret;
+			break;
 		case TOK_SIGN:
 			if (stack[j].attr == ATTR_SIGN_MINUS) {
 				ret = -ret;
