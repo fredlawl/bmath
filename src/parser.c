@@ -32,6 +32,9 @@ struct token_func token_functions[] = {
 	},
 };
 
+struct token *NULL_TOKEN =
+	&(struct token){ .type = TOK_NULL, .namelen = 0, .attr = ATTR_NULL };
+
 struct parser_context {
 	int max_parse_len;
 	bool liberror;
@@ -87,31 +90,30 @@ static uint64_t expr_xor(struct lexer *lexer);
 static uint64_t expr_or(struct lexer *lexer);
 static uint64_t expr(struct lexer *lexer);
 
-size_t str_hex_to_uint64(const char *input, ssize_t input_length,
-			 uint64_t *result)
+ssize_t str_hex_to_uint64(char *input, ssize_t input_length, uint64_t *result)
 {
 	ssize_t bytes_parsed = 0;
 	const char *input_start = input;
 
-	if (*input_start++ != '0') {
+	if (*input++ != '0') {
 		errno = EINVAL;
-		return 0;
+		return -1;
 	}
 
-	if (!__is_x(*input_start++)) {
+	if (!__is_x(*input++)) {
 		errno = EINVAL;
-		return 0;
+		return -2;
 	}
 
 	*result = 0;
-	while (__is_allowed_hex(*input_start)) {
-		*result = (*result << 4) + __hex_to_value(*input_start++);
+	while (__is_allowed_hex(*input)) {
+		*result = (*result << 4) + __hex_to_value(*input++);
 	}
 
-	bytes_parsed += input_start - input;
+	bytes_parsed += input - input_start;
 	if (bytes_parsed > input_length) {
 		errno = E2BIG;
-		return 0;
+		return -bytes_parsed;
 	}
 
 	return bytes_parsed;
@@ -231,7 +233,7 @@ static struct token __lexer_parse_number(struct lexer *lexer)
 {
 	uint64_t result = 0;
 	char *line_reader = (char *)lexer->line + lexer->current_column;
-	struct token tok = { .attr = 0, .type = TOK_NULL, .namelen = 0 };
+	struct token tok = *NULL_TOKEN;
 
 	while (__is_digit(*line_reader)) {
 		result = result * 10 + (*line_reader++ - '0');
@@ -249,12 +251,12 @@ static struct token __lexer_parse_hex(struct lexer *lexer)
 	// 8 bytes for 64bit number + 0x
 #define MAX_HEX_STR 16 + 2
 	uint64_t result = 0;
-	const char *start = lexer->line + lexer->current_column;
-	struct token tok = { .type = TOK_NULL, .attr = ATTR_NULL };
+	char *start = (char *)lexer->line + lexer->current_column;
+	struct token tok = *NULL_TOKEN;
 
-	size_t bytes_parsed = str_hex_to_uint64(start, MAX_HEX_STR, &result);
-	if (bytes_parsed == 0) {
-		if (errno == EOVERFLOW) {
+	ssize_t bytes_parsed = str_hex_to_uint64(start, MAX_HEX_STR, &result);
+	if (bytes_parsed < 0) {
+		if (errno == E2BIG) {
 			__lexical_error(lexer, "Hex exceeds 8 bytes");
 			return tok;
 		}
@@ -273,12 +275,11 @@ static struct token __lexer_parse_hex(struct lexer *lexer)
 static struct token __lexer_get_next_token(struct lexer *lexer)
 {
 	char *line_reader = (char *)lexer->line + lexer->current_column;
-	struct token token;
+	struct token token = *NULL_TOKEN;
 	char current_character;
 	char peek_character;
 
-	token.type = TOK_NULL;
-	token.attr = ATTR_NULL;
+	// this is to avoid having to specify namelen = 1 in multiple places
 	token.namelen = 1;
 
 	// We're already at or past the null character. Perform early return

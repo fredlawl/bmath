@@ -234,4 +234,5 @@ output
 FlameGraph
 gdb.txt
 a_perf_test
-perf_report
+b_perf_test
+.bmath_master

@@ -51,7 +51,7 @@ void test_hex_exceeds_len()
 	int err = errno;
 
 	TEST_ASSERT_EQUAL_MESSAGE(E2BIG, err, "error matches");
-	TEST_ASSERT_EQUAL_MESSAGE(0, parsed, "bytes returned");
+	TEST_ASSERT_EQUAL_MESSAGE(-4, parsed, "bytes returned");
 }
 
 void test_hex_allow_spaces()

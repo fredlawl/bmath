@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 
-import random
-import os
-import sys
 import argparse
-from bisect import bisect_left, bisect
+import random
+import sys
+from bisect import bisect_left
 
 # Constraints
 MIN_NUM_BYTES = 1
