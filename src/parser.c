@@ -19,16 +19,24 @@ struct token_func token_functions[] = {
 		align_down,
 	},
 	{
+		"bswap",
+		bswap,
+	},
+	{
+		"clz",
+		clz,
+	},
+	{
+		"ctz",
+		ctz,
+	},
+	{
 		"mask",
 		mask,
 	},
 	{
 		"popcnt",
 		popcnt,
-	},
-	{
-		"bswap",
-		bswap,
 	},
 };
 

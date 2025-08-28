@@ -63,6 +63,53 @@ void test_align_down()
 	}
 }
 
+void test_bswap()
+{
+	struct func_params params[] = {
+		{ "no args", 0, FUNC_EINVAL, 0, { 0 } },
+		{ "one arg", 0, FUNC_ESUCCESS, 1, { 0 } },
+	};
+
+	for (size_t i = 0; i < sizeof(params) / sizeof(params[0]); i++) {
+		check(&params[i], popcnt);
+	}
+}
+
+void test_clz()
+{
+	struct func_params params[] = {
+		{ "no args", 0, FUNC_EINVAL, 0, { 0 } },
+		{ "one arg", 0, FUNC_EINVAL, 1, { 0 } },
+		{ "correct args", 0, FUNC_ESUCCESS, 2, { 0, 8 } },
+		{ "arg 2 too low", 0, FUNC_ERANGE, 2, { 0, 0 } },
+		{ "arg 2 too high", 0, FUNC_ERANGE, 2, { 0, 9 } },
+		{ "63", 63, FUNC_ESUCCESS, 2, { 1, 8 } },
+		{ "31", 31, FUNC_ESUCCESS, 2, { 1, 4 } },
+		{ "1", 7, FUNC_ESUCCESS, 2, { 1, 1 } },
+		{ "0", 0, FUNC_ESUCCESS, 2, { 0, 1 } },
+		{ "full", 0, FUNC_ESUCCESS, 2, { 0xff, 1 } },
+		{ "over byte range", 0, FUNC_ERANGE, 2, { 0xffffffff, 1 } }
+	};
+
+	for (size_t i = 0; i < sizeof(params) / sizeof(params[0]); i++) {
+		check(&params[i], clz);
+	}
+}
+
+void test_ctz()
+{
+	struct func_params params[] = {
+		{ "no args", 0, FUNC_EINVAL, 0, { 0 } },
+		{ "correct args", 0, FUNC_ESUCCESS, 1, { 0 } },
+		{ "63", 63, FUNC_ESUCCESS, 1, { (uint64_t)1 << 63 } },
+		{ "1", 0, FUNC_ESUCCESS, 1, { 1 } }
+	};
+
+	for (size_t i = 0; i < sizeof(params) / sizeof(params[0]); i++) {
+		check(&params[i], ctz);
+	}
+}
+
 void test_mask()
 {
 	struct func_params params[] = {
@@ -90,25 +137,15 @@ void test_popcnt()
 	}
 }
 
-void test_bswap()
-{
-	struct func_params params[] = {
-		{ "no args", 0, FUNC_EINVAL, 0, { 0 } },
-		{ "one arg", 0, FUNC_ESUCCESS, 1, { 0 } },
-	};
-
-	for (size_t i = 0; i < sizeof(params) / sizeof(params[0]); i++) {
-		check(&params[i], popcnt);
-	}
-}
-
 int main(void)
 {
 	UNITY_BEGIN();
 	RUN_TEST(test_align);
 	RUN_TEST(test_align_down);
+	RUN_TEST(test_bswap);
+	RUN_TEST(test_clz);
+	RUN_TEST(test_ctz);
 	RUN_TEST(test_mask);
 	RUN_TEST(test_popcnt);
-	RUN_TEST(test_bswap);
 	return UNITY_END();
 }

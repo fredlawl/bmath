@@ -22,9 +22,11 @@ enum func_err align(uint64_t *retval, int argc,
 		    uint64_t argv[FUNCTIONS_MAX_OPS]);
 enum func_err align_down(uint64_t *retval, int argc,
 			 uint64_t argv[FUNCTIONS_MAX_OPS]);
+enum func_err bswap(uint64_t *retval, int argc,
+		    uint64_t argv[FUNCTIONS_MAX_OPS]);
+enum func_err clz(uint64_t *retval, int argc, uint64_t argv[FUNCTIONS_MAX_OPS]);
+enum func_err ctz(uint64_t *retval, int argc, uint64_t argv[FUNCTIONS_MAX_OPS]);
 enum func_err mask(uint64_t *retval, int argc,
 		   uint64_t argv[FUNCTIONS_MAX_OPS]);
 enum func_err popcnt(uint64_t *retval, int argc,
 		     uint64_t argv[FUNCTIONS_MAX_OPS]);
-enum func_err bswap(uint64_t *retval, int argc,
-		    uint64_t argv[FUNCTIONS_MAX_OPS]);

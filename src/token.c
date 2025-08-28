@@ -4,7 +4,7 @@
 
 #include "token.h"
 
-#define ALPHABET_SIZE (('w' - '_') + 1)
+#define ALPHABET_SIZE (('z' - '_') + 1)
 
 struct token_tbl {
 	struct token_tbl *children[ALPHABET_SIZE];
@@ -119,6 +119,6 @@ int token_tbl_register_func(struct token_tbl *tbl, struct token_func *func)
 {
 	struct token tok = { .attr = (uint64_t)func->func,
 			     .namelen = strlen(func->name),
-			     TOK_FUNCTION };
+			     .type = TOK_FUNCTION };
 	return token_tbl_insert(tbl, func->name, tok);
 }

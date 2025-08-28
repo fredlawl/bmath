@@ -69,6 +69,17 @@ align_down(x, align_to)
 bswap(x)
     Swaps the byte order of x. 16, 32, and 64 modes are supported respectfully.
 
+clz(x, num_bytes)
+    Counts number of zeros before the first 1, according to num_bytes.
+    num_bytes must be in range of [1, 8].
+    Example:
+      x = 1, num_bytes = 8, expect result 63. If num_bytes = 1, expect 7.
+
+ctz(x)
+    Counts number of zeros after the last 1.
+    Example:
+      x = 1, expect result 0. If x = (1 << 63), expect 63.
+
 mask(num_bytes)
     Creates a mask of num_bytes. num_bytes must be in range of [0, 8].
 

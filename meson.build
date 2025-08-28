@@ -45,12 +45,12 @@ libbmath = shared_library(
   dependencies: libbmath_deps,
   install: true,
   soversion: '1',
-  version: '1.0.0',
+  version: '1.1.0',
 )
 
 # Test
 unity_dep = dependency('unity', static: true, required: false)
-if unity_dep.found() 
+if unity_dep.found()
   parser_test = executable(
     'bmath_parser_test',
     'test/parser.c',
