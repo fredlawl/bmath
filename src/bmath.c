@@ -1,4 +1,7 @@
+#include <argp.h>
+#include <sys/inotify.h>
 #include <locale.h>
+#include <poll.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,7 +12,6 @@
 #include <readline/history.h>
 #include <readline/readline.h>
 
-#include "argp.h"
 #include "argp_config.h"
 #include "parser.h"
 #include "print.h"
@@ -23,6 +25,7 @@ const char *argp_program_version = VERSION;
 static bool uppercase_hex = false;
 static bool show_unicode = false;
 static bool show_binary = false;
+static char *watch_file = NULL;
 
 #define P_MAX_EXP_LEN 512
 
@@ -113,7 +116,7 @@ static int do_readline(struct parser_context *ctx, uint64_t alignment)
 	return EXIT_SUCCESS;
 }
 
-static int do_stdin(struct parser_context *ctx, uint64_t alignment)
+static int read_file(struct parser_context *ctx, int fd, uint64_t alignment)
 {
 #define BUF_SIZE 4096
 	int err;
@@ -125,10 +128,10 @@ static int do_stdin(struct parser_context *ctx, uint64_t alignment)
 		char read_buff[BUF_SIZE] = { 0 };
 		ssize_t buff_index = 0;
 
-		bytes_read = read(STDIN_FILENO, read_buff, sizeof(read_buff));
+		bytes_read = read(fd, read_buff, sizeof(read_buff));
 		if (bytes_read < 0) {
-			perror("do_stdin() error reading line");
-			return EXIT_FAILURE;
+			perror("read_file() error reading line");
+			return EINVAL;
 		}
 
 		if (bytes_read == 0)
@@ -167,38 +170,165 @@ static int do_stdin(struct parser_context *ctx, uint64_t alignment)
 	} while (bytes_read > 0);
 
 	fflush(stdout);
+	return 0;
+}
+
+static int do_stdin(struct parser_context *ctx, uint64_t alignment)
+{
+	int err;
+	err = read_file(ctx, STDIN_FILENO, alignment);
+	if (err) {
+		parser_free(ctx);
+		return EXIT_FAILURE;
+	}
 
 	parser_free(ctx);
-
 	return EXIT_SUCCESS;
+}
+
+static void clear_screen()
+{
+	fputs("\033[2J\033[H", stdout);
+}
+
+static int handle_watch_event(struct parser_context *ctx, int notify_fd,
+			      uint64_t alignment)
+{
+	ssize_t bytes_read;
+	char buf[4096]
+		__attribute__((aligned(__alignof__(struct inotify_event))));
+	const struct inotify_event *event;
+
+	while (1) {
+		bytes_read = read(notify_fd, buf, sizeof(buf));
+		if (bytes_read < 0 && errno != EAGAIN) {
+			perror("read");
+			break;
+		}
+
+		if (bytes_read <= 0) {
+			fprintf(stderr, "loop broke\n");
+			break;
+		}
+
+		for (char *ptr = buf; ptr < buf + bytes_read;
+		     ptr += sizeof(struct inotify_event) + event->len) {
+			event = (struct inotify_event *)ptr;
+
+			if (event->mask & IN_CLOSE_WRITE) {
+				fprintf(stderr, "close write\n");
+				// goto out;
+			}
+
+			if (event->mask & IN_DELETE) {
+				fprintf(stderr, "delete\n");
+				// goto out;
+			}
+
+			if (event->mask & IN_DELETE_SELF) {
+				fprintf(stderr, "delete self\n");
+				// goto out;
+			}
+
+			if (event->mask & IN_CLOSE) {
+				fprintf(stderr, "close\n");
+				// goto out;
+			}
+
+			if (event->mask & IN_IGNORED) {
+				fprintf(stderr, "need a rewatch\n");
+				// goto out;
+			}
+			//clear_screen();
+			fprintf(stderr, "%s: file got wrote\n", event->name);
+		}
+	}
+
+	return 0;
+}
+
+static int do_watch(struct parser_context *ctx, const char *watch_file_path,
+		    uint64_t alignment)
+{
+	int notify_fd, watch_fd, poll_num;
+	int err;
+	struct pollfd pollfds[1];
+	int exit = EXIT_FAILURE;
+
+	notify_fd = inotify_init();
+	if (notify_fd < 0) {
+		perror("do_watch(): couldn't inotify_init");
+		return EXIT_FAILURE;
+	}
+
+	watch_fd = inotify_add_watch(notify_fd, watch_file_path, IN_ALL_EVENTS);
+	if (watch_fd < 0) {
+		perror("do_watch(): couldn't add watch");
+		goto err_notify;
+	}
+
+	pollfds[0].fd = notify_fd;
+	pollfds[0].events = POLLIN;
+
+	while (1) {
+		poll_num = poll(pollfds, 1, -1);
+		if (poll_num == -1) {
+			if (errno == EINTR)
+				continue;
+			perror("poll");
+			goto err_watch;
+		}
+
+		if (poll_num > 0) {
+			if (pollfds[0].revents & POLLIN) {
+				err = handle_watch_event(ctx, notify_fd,
+							 alignment);
+				if (err) {
+					goto err_watch;
+				}
+			}
+		}
+	}
+
+	exit = EXIT_SUCCESS;
+err_watch:
+	inotify_rm_watch(notify_fd, watch_fd);
+err_notify:
+	close(notify_fd);
+	parser_free(ctx);
+	return exit;
 }
 
 int main(int argc, char *argv[])
 {
 	int err;
+	struct parser_settings settings;
+	struct parser_context *ctx;
+	struct arguments arguments;
 	char stdout_buff[4096] = { 0 };
 	uint64_t alignment = 0;
 
 	setvbuf(stdout, stdout_buff, _IOFBF, sizeof(stdout_buff));
 	setlocale(LC_CTYPE, "en_US.UTF-8");
 
-	struct arguments arguments;
-
 	arguments.detached_expr = NULL;
 	arguments.should_uppercase_hex = false;
 	arguments.should_show_unicode = false;
 	arguments.print_binary = false;
 	arguments.alignment_expr = NULL;
+	arguments.watch = false;
+	arguments.watch_path = NULL;
 
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
 	uppercase_hex = arguments.should_uppercase_hex;
 	show_unicode = arguments.should_show_unicode;
 	show_binary = arguments.print_binary;
+	watch_file = arguments.watch_path;
 
-	struct parser_settings settings = { .max_parse_len = P_MAX_EXP_LEN };
+	settings = (struct parser_settings){ .max_parse_len = P_MAX_EXP_LEN };
 
-	struct parser_context *ctx = parser_new(&settings);
+	ctx = parser_new(&settings);
 
 	if (arguments.alignment_expr) {
 		err = _eval(ctx,
@@ -213,6 +343,16 @@ int main(int argc, char *argv[])
 			parser_free(ctx);
 			return err;
 		}
+	}
+
+	if (arguments.watch) {
+		if (!arguments.watch_path) {
+			fprintf(stderr, "Missing FILE for the -w option.\n");
+			parser_free(ctx);
+			return 1;
+		}
+
+		return do_watch(ctx, arguments.watch_path, alignment);
 	}
 
 	if (arguments.detached_expr) {
