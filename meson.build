@@ -1,7 +1,7 @@
 # for devel: meson install --tags devel
 # for deployment: meson install --tags runtime,man
 # for test: meson test
-project('bmath', 'c', version: '3.0.0', default_options: ['c_std=c11'])
+project('bmath', 'c', version: '3.1.0', default_options: ['c_std=c11'])
 
 add_project_arguments(
   [

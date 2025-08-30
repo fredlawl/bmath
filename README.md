@@ -16,7 +16,7 @@ This program assumes little-endian system, but big-endian input.
 
 1. libreadline
 2. libtinfo
-1. [Install Unity](https://github.com/ThrowTheSwitch/Unity/tree/master) (tests only!)
+3. [Install Unity](https://github.com/ThrowTheSwitch/Unity/tree/master) (tests only!)
 
 ### Compile & Install
 
@@ -25,12 +25,13 @@ Clone this repo, `cd` into the cloned directory, and then run the following comm
 1. `meson setup --buildtype=release build`
 2. `meson compile -C build`
 3. `meson test -C build` (if you want to run the tests)
-3. `sudo meson install -C build --tags runtime,man`
+4. `sudo meson install -C build --tags runtime,man`
 
 ## Usage
 
 ```
 bmath [-a <EXPRESSION>] [-b] [-u] [--unicode] [EXPRESSION]
+bmath [-a <EXPRESSION>] [-b] [-u] [--unicode] -w <FILE> 
 bmath [--help]
 bmath [--usage]
 bmath [-V]
@@ -39,8 +40,7 @@ bmath [-V]
 Run `./bmath` to run the program in interactive mode. To exit, use `ctrl + c`,
 or type in "quit" or "exit".
 
-Pass a positional argument to run in
-non-interactive mode:
+Pass a positional argument to run in headless mode:
 
 ```sh
 bmath "1"
@@ -50,7 +50,15 @@ Optionally, pipe stdin:
 
 ```sh
 bmath < /path/to/file
+#or
 echo "1" | bmath
+```
+
+Live editing:
+
+```sh
+bmath -w /path/to/file
+vim /path/to/file
 ```
 
 ### Examples

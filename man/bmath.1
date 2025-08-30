@@ -12,6 +12,12 @@
 .Op Fl -unicode
 .Op Ar EXPRESSION
 .Nm
+.Op Fl a Ar <EXPRESSION>
+.Op Fl b
+.Op Fl u
+.Op Fl -unicode
+.Ar -w \fI<FILE>\fR
+.Nm
 .Op Fl -help
 .Nm
 .Op Fl -usage
@@ -19,13 +25,13 @@
 .Op Fl V
 .Sh DESCRIPTION
 .Pp
-Prints the result of some bitwise \fIEXPRESSION\fR. These are parsed through \fIEXPRESSION\fR, \fBstdin\fR, or \fBinteractive\fR modes. The default mode is \fBinteractive\fR.
+Prints the result of some bitwise \fIEXPRESSION\fR. These are parsed through \fIEXPRESSION\fR, \fBstdin\fR, \fBlive-edit\fR, or \fBinteractive\fR modes. The default mode is \fBinteractive\fR.
 .Pp
 Interactive mode can be exited by typing \fIexit\fR or \fIquit\fR.
 .Sh OPTIONS
 .Bl -tag -width Ds
 .It Fl a\ \fI<EXPRESSION>\fR, Fl -align=\fI<EXPRESSION>\fR
-Takes the evauluation from the \fIEXPRESSION\fR, \fBstdin\fR, or \fBinteractive\fR modes, and then aligns the output to the alignment expression. It helps if this alignment is a power of 2, but it's not enforced. Otherwise, all evaulation logic applies to the alignment expression.
+Takes the evauluation from the \fIEXPRESSION\fR, \fBstdin\fR, \fBlive-edit\fR, or \fBinteractive\fR modes, and then aligns the output to the alignment expression. It helps if this alignment is a power of 2, but it's not enforced. Otherwise, all evaulation logic applies to the alignment expression.
 .It Fl b
 Appends binary representation of result to output.
 .It Fl -help
@@ -38,6 +44,8 @@ Appends unicode representation of result to output in UTF-8, 16, and 32 forms.
 Prints usage message.
 .It Fl V, Fl -version
 Prints program version.
+.It Fl w, Fl -watch
+Watches file for changes. ie. \fBlive-edit\fR mode. Requires a path to a file to watch as the first positional argument.
 .El
 .Sh EXPRESSION
 .Bd -literal
