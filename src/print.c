@@ -183,7 +183,12 @@ void print_binary(uint64_t number)
 	}
 
 	ensure_stream();
-	fwrite(buff, sizeof(buff), 1, stream);
+	/*
+   * The last null byte could be removed from the array, but incase
+   * this ever gets changed to be more like sprintf() or something,
+   * always include it. Just don't write it.
+   */
+	fwrite(buff, sizeof(buff) - 1, 1, stream);
 }
 
 void print_number(uint64_t num, bool uppercase_hex, int encoding_mask)
