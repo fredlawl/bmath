@@ -45,7 +45,7 @@ libbmath = shared_library(
   dependencies: libbmath_deps,
   install: true,
   soversion: '1',
-  version: '1.1.1',
+  version: '1.1.2',
 )
 
 # Test

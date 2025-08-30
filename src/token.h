@@ -37,11 +37,16 @@ enum token_type {
 };
 
 static const char *lookup_token_name[] = {
-	[TOK_NULL] = "null",	     [TOK_NUMBER] = "number",
-	[TOK_OP] = "|, ^, or &",     [TOK_SHIFT_OP] = "<<, or >>",
-	[TOK_LPAREN] = "(",	     [TOK_RPAREN] = ")",
-	[TOK_BITWISE_NOT] = "~",     [TOK_SIGN] = "+, or -",
-	[TOK_FACTOR_OP] = "*, or %", [TOK_FUNCTION] = "function",
+	[TOK_NULL] = "null",
+	[TOK_NUMBER] = "number",
+	[TOK_OP] = "|, ^, or &",
+	[TOK_SHIFT_OP] = "<<, or >>",
+	[TOK_LPAREN] = "(",
+	[TOK_RPAREN] = ")",
+	[TOK_BITWISE_NOT] = "~",
+	[TOK_SIGN] = "+, or -",
+	[TOK_FACTOR_OP] = "*, /, or %",
+	[TOK_FUNCTION] = "function",
 	[TOK_COMMA] = ",",
 };
 

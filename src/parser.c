@@ -327,6 +327,10 @@ static struct token __lexer_get_next_token(struct lexer *lexer)
 			token.type = TOK_FACTOR_OP;
 			token.attr = ATTR_FACTOR_OP_MOD;
 			goto out;
+		case '/':
+			token.type = TOK_FACTOR_OP;
+			token.attr = '/';
+			goto out;
 		case '&':
 			token.type = TOK_OP;
 			token.attr = ATTR_OP_AND;
@@ -540,6 +544,13 @@ static uint64_t expr_factor(struct lexer *lexer)
 		switch (tok.attr) {
 		case ATTR_FACTOR_OP_MUL:
 			left *= right;
+			break;
+		case '/':
+			if (right == 0) {
+				__lexical_error(lexer, "Division by zero");
+				return left;
+			}
+			left /= right;
 			break;
 		case ATTR_FACTOR_OP_MOD:
 			if (right == 0) {
