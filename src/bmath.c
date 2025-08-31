@@ -279,6 +279,7 @@ static int handle_watch_event(struct execution_ctx *ectx,
 
 				int err = read_file(ectx, openfd);
 				if (err) {
+					close(openfd);
 					return EINVAL;
 				}
 				close(openfd);
@@ -335,6 +336,7 @@ static int do_watch(struct execution_ctx *ectx, const char *watch_file_path)
 
 	err = read_file(ectx, openfd);
 	if (err) {
+		close(openfd);
 		goto err_watch;
 	}
 	close(openfd);
@@ -402,6 +404,11 @@ int main(int argc, char *argv[])
 					     .err_stream = err_stream };
 
 	ectx.pctx = parser_new(&settings);
+	if (!ectx.pctx) {
+		fprintf(err_stream, "Failed to create parser context");
+		return EXIT_FAILURE;
+	}
+
 	ectx.print_expr = false;
 
 	if (arguments.alignment_expr) {
