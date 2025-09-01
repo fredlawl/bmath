@@ -128,16 +128,27 @@ gen_lookup_table(
 )
 print()
 
-# hex terminator
 gen_lookup_table(
-    "lookup_is_hex_terminator",
-    "__is_hex_terminator",
+    "lookup_is_whitespace",
+    "__is_whitespace",
     gen_table(
         lambda i: i == ord(" ")
         or i == ord("\t")
         or i == ord("\n")
         or i == ord("\r")
         or i == 0
+    ),
+)
+print()
+
+gen_lookup_table(
+    "lookup_is_allowed_identifier",
+    "__is_allowed_identifier",
+    gen_table(
+        lambda i: i == ord("_")
+        or (i >= ord("A") and i <= ord("Z"))
+        or (i >= ord("a") and i <= ord("z"))
+        or (i >= ord("0") and i <= ord("9"))
     ),
 )
 print()

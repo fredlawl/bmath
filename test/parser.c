@@ -4,6 +4,8 @@
 
 #include "../src/parser.h"
 
+#define DEBUG
+
 struct expr_expected_params {
 	char *expression;
 	uint64_t expected;
@@ -46,8 +48,8 @@ static inline void check_basic(const struct expr_expected_params *param)
 
 void setUp(void)
 {
+#ifndef DEBUG
 	FILE *dev_null;
-
 	pctx_settings = (struct parser_settings){ .max_parse_len = 128, NULL };
 
 	dev_null = fopen("/dev/null", "w");
@@ -57,14 +59,21 @@ void setUp(void)
 	}
 
 	pctx_settings.err_stream = dev_null;
+#else
+	pctx_settings =
+		(struct parser_settings){ .max_parse_len = 128, stderr };
+#endif
+
 	pctx = parser_new(&pctx_settings);
 }
 
 void tearDown(void)
 {
+#ifndef DEBUG
 	if (pctx_settings.err_stream) {
 		fclose(pctx_settings.err_stream);
 	}
+#endif
 	parser_free(pctx);
 }
 
@@ -249,6 +258,43 @@ void test_concat_expressions()
 	}
 }
 
+void test_variables()
+{
+	struct expr_expected_err_params params[] = {
+		{ "@", 0, PE_PARSE_ERROR },
+		{ "myvar = 10;", 0, PE_PARSE_ERROR },
+		{ "@myvar = 20", 0, PE_PARSE_ERROR },
+		// ^^^^^^^^^^^^^^^^^^^^ despite resulting in parse error, the symbol table isn't reset
+		{ "@my#var = 30;", 0, PE_PARSE_ERROR },
+		{ "@asuperlongvariablenamethatshouldntbelong = 30;", 0,
+		  PE_PARSE_ERROR },
+		{ "@unknown", 0, 0 },
+		{ "@myvar = 40;", 40, 0 },
+		{ "@my_var = 40;", 40, 0 },
+		{ "@number1 = 40; @number1", 40, 0 },
+		{ "@another = 1; 3", 3, 0 },
+		{ "@0myvar = 1; @0myvar << 3", 8, 0 },
+		{ "@2 = 1; @2 << 3", 8, 0 },
+		{ "@a1b = 1; @a1b << 3", 8, 0 },
+		{ "@myvar = 50; @next = @myvar; @next", 50, 0 },
+		{ "@myvar = 10; @myvar", 10, 0 },
+		{ "@myvar = 20; @myvar = 30; @myvar", 30, 0 },
+		{ "@myvar = 1; @myvar << 3", 8, 0 },
+		{ "@myvar = 3; 1 << @myvar", 8, 0 },
+		{ "@one = 1; @two = 2; @one", 1, 0 },
+		{ "@one = 1; @two = 2; @two", 2, 0 },
+		{ "@one1 = 1; @one2 = 2; @one1", 1, 0 },
+		{ "@one1 = 1; @one2 = 2; @one2", 2, 0 },
+		{ "@ok = 1; << 3", 0, PE_PARSE_ERROR },
+		{ "@ok = 1;\n3", 3, 0 },
+		{ "@ok = 2; -@ok", -2, 0 },
+	};
+
+	for (size_t i = 0; i < sizeof(params) / sizeof(params[0]); i++) {
+		check(&params[i]);
+	}
+}
+
 int main(void)
 {
 	UNITY_BEGIN();
@@ -260,5 +306,6 @@ int main(void)
 	RUN_TEST(test_order_of_operations);
 	RUN_TEST(test_functions);
 	RUN_TEST(test_concat_expressions);
+	RUN_TEST(test_variables);
 	return UNITY_END();
 }

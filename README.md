@@ -97,20 +97,37 @@ Hex32: 0x00020000
 Hex64: 0x0000000000020000
 ```
 
+Variables are available:
+
+```sh
+bmath "@foo = 2 * 4; @one = 1; @one << @foo"
+   u64: 256
+   i16: 256
+  char: Exceeded
+   Hex: 0x100
+ Hex16: 0x0100
+ Hex32: 0x00000100
+ Hex64: 0x0000000000000100
+```
+
 ## Syntax
 
 ```
+assignment = variable, "=", expr, ";" ;
 expr = signed, op, signed
-     | signed ;
+     | signed ; 
 signed = number
        | lparen, expr, rparen
        | { logic_not | sign }, signed
        | function
-function = function_name, lparen, expr, {",", expr }, rparen
+       | variable ; 
+function = ident, lparen, expr, {",", expr }, rparen ;
 number = digit, { digit }
        | hex ;
+variable = "@", ident ;
 digit = [0-9], { [0-9] } ;
 hex = "0x", [0-9a-fA-F], { [0-9a-fA-F] } ;
+ident = [_0-9a-fA-F], { [_0-9a-fA-F] } ;
 op = "|" | "^" | "&" | "<<" | ">>" | "-" | "+" | "*" | "/" | "%" ;
 lparen = "(" ;
 rparen = ")" ;

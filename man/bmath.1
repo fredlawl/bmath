@@ -49,17 +49,21 @@ Watches file for changes. ie. \fBlive-edit\fR mode. Requires a path to a file to
 .El
 .Sh EXPRESSION
 .Bd -literal
+assignment = variable, "=", expr, ";" ;
 expr = signed, op, signed
-     | signed ;
+     | signed ; 
 signed = number
        | lparen, expr, rparen
        | { logic_not | sign }, signed
        | function
-function = function_name, lparen, expr, {",", expr }, rparen
+       | variable ; 
+function = ident, lparen, expr, {",", expr }, rparen ;
 number = digit, { digit }
        | hex ;
+variable = "@", ident ;
 digit = [0-9], { [0-9] } ;
 hex = "0x", [0-9a-fA-F], { [0-9a-fA-F] } ;
+ident = [_0-9a-fA-F], { [_0-9a-fA-F] } ;
 op = "|" | "^" | "&" | "<<" | ">>" | "-" | "+" | "*" | "/" | "%" ;
 lparen = "(" ;
 rparen = ")" ;
