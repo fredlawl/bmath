@@ -82,7 +82,7 @@ static inline int __is_allowed_character(char c)
 	return lookup_is_allowed_character[(int) c];
 }
 
-static int lookup_is_hex_terminator[] = {
+static int lookup_is_whitespace[] = {
     1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
     1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
@@ -93,9 +93,25 @@ static int lookup_is_hex_terminator[] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 };
 
-static inline int __is_hex_terminator(char c)
+static inline int __is_whitespace(char c)
 {
-	return lookup_is_hex_terminator[(int) c];
+	return lookup_is_whitespace[(int) c];
+}
+
+static int lookup_is_allowed_identifier[] = {
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 
+    0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 
+    0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 
+};
+
+static inline int __is_allowed_identifier(char c)
+{
+	return lookup_is_allowed_identifier[(int) c];
 }
 
 #endif

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
 
 enum func_err { FUNC_ESUCCESS = 0, FUNC_EINVAL = 1, FUNC_ERANGE };

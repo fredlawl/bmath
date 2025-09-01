@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,43 +12,38 @@
 #include "lookup_tables.h"
 #include "token.h"
 #include "functions.h"
+#include "symbol.h"
+#include <sys/types.h>
 
-struct token_func token_functions[] = {
-	{ "align", align },
-	{
-		"align_down",
-		align_down,
-	},
-	{
-		"bswap",
-		bswap,
-	},
-	{
-		"clz",
-		clz,
-	},
-	{
-		"ctz",
-		ctz,
-	},
-	{
-		"mask",
-		mask,
-	},
-	{
-		"popcnt",
-		popcnt,
-	},
+static struct token *NULL_TOKEN =
+	&(struct token){ .type = TOK_NULL, .attr = ATTR_NULL };
+
+static struct named_function {
+	const char *name;
+	size_t namelen;
+	bmath_func_t func;
+} PREDEFINED_FUNCTIONS[] = {
+	{ "align", sizeof("algin") - 1, align },
+	{ "align_down", sizeof("align_down") - 1, align_down },
+	{ "bswap", sizeof("bswap") - 1, bswap },
+	{ "clz", sizeof("clz") - 1, clz },
+	{ "ctz", sizeof("ctz") - 1, ctz },
+	{ "mask", sizeof("mask") - 1, mask },
+	{ "popcnt", sizeof("popcnt") - 1, popcnt },
 };
 
-struct token *NULL_TOKEN =
-	&(struct token){ .type = TOK_NULL, .namelen = 0, .attr = ATTR_NULL };
+static inline struct symbol *named_func_to_sym(struct named_function *nfunc)
+{
+	uintptr_t value = (uintptr_t)nfunc->func;
+	return symbol_new(nfunc->name, nfunc->namelen, SYMBOL_FUNCTION, 0,
+			  &value, sizeof(value));
+}
 
 struct parser_context {
 	int max_parse_len;
 	bool liberror;
 	FILE *err_stream;
-	struct token_tbl *functions;
+	struct symbol_tbl *tbl;
 };
 
 #define __general_error(l, fmt, arg...)                           \
@@ -77,12 +73,12 @@ struct lexer {
 
 static inline bool __is_x(char character);
 static inline bool __is_start_of_hex(char current_character, char peek);
-static inline bool __is_illegal_character(char character);
 
 static struct lexer __init_lexer(struct parser_context *ctx, const char *line,
 				 int16_t line_length);
 static struct token __lexer_parse_number(struct lexer *lexer);
 static struct token __lexer_parse_hex(struct lexer *lexer);
+static struct token __lexer_parse_ident(struct lexer *lexer);
 static struct token __lexer_get_next_token(struct lexer *lexer);
 
 static void __expect(struct lexer *lexer, enum token_type expected);
@@ -96,6 +92,7 @@ static uint64_t expr_shift(struct lexer *lexer);
 static uint64_t expr_and(struct lexer *lexer);
 static uint64_t expr_xor(struct lexer *lexer);
 static uint64_t expr_or(struct lexer *lexer);
+//static uint64_t expr_assignment(struct lexer *lexer);
 static uint64_t expr(struct lexer *lexer);
 
 ssize_t str_hex_to_uint64(char *input, ssize_t input_length, uint64_t *result)
@@ -135,16 +132,18 @@ static uint64_t __perform_parse(struct lexer *lexer)
 
 struct parser_context *parser_new(struct parser_settings *settings)
 {
+	struct symbol_table_attr tbl_attr;
 	int err;
 	struct parser_context *ctx = malloc(sizeof(*ctx));
 	if (!ctx) {
 		return NULL;
 	}
 
-	ctx->functions = token_tbl_new();
-	if (!ctx->functions) {
-		free(ctx);
-		return NULL;
+	tbl_attr.key_size = 32;
+
+	ctx->tbl = symbol_table_new(&tbl_attr);
+	if (!ctx->tbl) {
+		goto out_err;
 	}
 
 	ctx->liberror = false;
@@ -155,21 +154,34 @@ struct parser_context *parser_new(struct parser_settings *settings)
 	}
 
 	for (size_t i = 0;
-	     i < sizeof(token_functions) / sizeof(token_functions[0]); i++) {
-		err = token_tbl_register_func(ctx->functions,
-					      &token_functions[i]);
+	     i < sizeof(PREDEFINED_FUNCTIONS) / sizeof(PREDEFINED_FUNCTIONS[0]);
+	     i++) {
+		struct symbol *sym =
+			named_func_to_sym(&PREDEFINED_FUNCTIONS[i]);
+		if (!sym) {
+			goto out_err;
+		}
+
+		err = symbol_table_update(ctx->tbl, sym);
 		if (err) {
-			parser_free(ctx);
-			return NULL;
+			goto out_err;
 		}
 	}
 
 	return ctx;
+
+out_err:
+	parser_free(ctx);
+	return NULL;
 }
 
 int parser_free(struct parser_context *ctx)
 {
-	token_tbl_free(ctx->functions);
+	if (!ctx) {
+		return 0;
+	}
+
+	symbol_table_free(ctx->tbl);
 	free(ctx);
 	return 0;
 }
@@ -217,11 +229,6 @@ static inline bool __is_x(char character)
 static inline bool __is_start_of_hex(char current_character, char peek)
 {
 	return current_character == '0' && __is_x(peek);
-}
-
-static inline bool __is_illegal_character(char character)
-{
-	return !__is_allowed_character(character);
 }
 
 static struct lexer __init_lexer(struct parser_context *ctx, const char *line,
@@ -280,15 +287,81 @@ static struct token __lexer_parse_hex(struct lexer *lexer)
 	return tok;
 }
 
+static struct token __lexer_parse_ident(struct lexer *lexer)
+{
+	char *line_reader = (char *)lexer->line + lexer->current_column;
+	char *start = line_reader;
+	struct symbol *sym = NULL;
+	size_t ident_len;
+	bool variable = false;
+	int err;
+	char *ident;
+	uint64_t variable_value = 0;
+
+	// account for variable definitions
+	if (*line_reader == '$') {
+		variable = true;
+		line_reader++;
+	}
+
+	do {
+		if (!__is_allowed_identifier(*line_reader)) {
+			//fprintf(stderr, "============= faild character: %c\n",
+			//	*line_reader);
+			//lexer->current_column += line_reader - start;
+			//__lexical_error(
+			//	lexer,
+			//	"Identifier must only have [_a-zA-Z0-9] characters");
+			//return *NULL_TOKEN;
+			break;
+		}
+	} while (!__is_whitespace(*line_reader++));
+
+	ident_len = line_reader - start;
+	ident = line_reader - ident_len;
+	lexer->current_column += ident_len;
+
+	// just a $
+	if ((!ident_len || !(ident_len - 1)) && variable) {
+		__lexical_error(lexer, "Identifier is empty");
+		return *NULL_TOKEN;
+	} else if (!ident_len) {
+		return *NULL_TOKEN;
+	}
+
+	sym = symbol_table_lookup(lexer->ctx->tbl, ident, ident_len);
+	if (sym) {
+		return symbol_to_token(sym);
+	}
+
+	if (!variable) {
+		return *NULL_TOKEN;
+	}
+
+	sym = symbol_new(ident, ident_len, SYMBOL_VARIABLE, 0,
+			 (void *)&variable_value, sizeof(variable_value));
+	if (!sym) {
+		__general_error(lexer, "No memory to allocate symbol");
+		return *NULL_TOKEN;
+	}
+
+	err = symbol_table_update(lexer->ctx->tbl, sym);
+	if (err) {
+		symbol_free(sym);
+		__general_error(lexer,
+				"Unable to store identifier into lookup table");
+		return *NULL_TOKEN;
+	}
+
+	return symbol_to_token(sym);
+}
+
 static struct token __lexer_get_next_token(struct lexer *lexer)
 {
 	char *line_reader = (char *)lexer->line + lexer->current_column;
 	struct token token = *NULL_TOKEN;
 	char current_character;
 	char peek_character;
-
-	// this is to avoid having to specify namelen = 1 in multiple places
-	token.namelen = 1;
 
 	// We're already at or past the null character. Perform early return
 	// to prevent snooping at memory past the bounds of the array.
@@ -299,15 +372,6 @@ static struct token __lexer_get_next_token(struct lexer *lexer)
 	while ((current_character = *line_reader++)) {
 		peek_character = *line_reader;
 
-		struct token *t =
-			token_tbl_lookup(lexer->ctx->functions, --line_reader);
-		if (t && t->type != TOK_NULL) {
-			token = *t;
-			goto out;
-		} else {
-			line_reader++;
-		}
-
 		if (__is_digit(current_character)) {
 			if (__is_start_of_hex(current_character,
 					      peek_character)) {
@@ -316,78 +380,79 @@ static struct token __lexer_get_next_token(struct lexer *lexer)
 			return __lexer_parse_number(lexer);
 		}
 
+		token.attr = current_character;
 		switch (current_character) {
 		case '\t':
 		case '\n':
 		case '\r':
 		case ' ':
-			lexer->current_column++;
+			lexer->current_column += 1;
 			continue;
 		case '%':
 			token.type = TOK_FACTOR_OP;
-			token.attr = ATTR_FACTOR_OP_MOD;
 			goto out;
 		case '/':
 			token.type = TOK_FACTOR_OP;
-			token.attr = '/';
 			goto out;
 		case '&':
 			token.type = TOK_OP;
-			token.attr = ATTR_OP_AND;
 			goto out;
 		case '(':
 			token.type = TOK_LPAREN;
-			token.attr = ATTR_LPAREN;
 			goto out;
 		case ')':
 			token.type = TOK_RPAREN;
-			token.attr = ATTR_RPAREN;
 			goto out;
 		case '*':
 			token.type = TOK_FACTOR_OP;
-			token.attr = ATTR_FACTOR_OP_MUL;
 			goto out;
 		case '+':
 			token.type = TOK_SIGN;
-			token.attr = ATTR_SIGN_PLUS;
 			goto out;
 		case ',':
 			token.type = TOK_COMMA;
 			goto out;
 		case '-':
 			token.type = TOK_SIGN;
-			token.attr = ATTR_SIGN_MINUS;
+			goto out;
+		case ';':
+			token.type = TOK_TERMINATOR;
 			goto out;
 		case '<':
 			if (peek_character == '<') {
 				token.type = TOK_SHIFT_OP;
 				token.attr = ATTR_LSHIFT;
-				token.namelen = 2;
+				lexer->current_column += 1;
 				goto out;
 			}
 			break;
+		case '=':
+			token.type = TOK_ASSIGNMENT;
+			goto out;
 		case '>':
 			if (peek_character == '>') {
 				token.type = TOK_SHIFT_OP;
 				token.attr = ATTR_RSHIFT;
-				token.namelen = 2;
+				lexer->current_column += 1;
 				goto out;
 			}
 			break;
 		case '^':
 			token.type = TOK_OP;
-			token.attr = ATTR_OP_XOR;
 			goto out;
 		case '|':
 			token.type = TOK_OP;
-			token.attr = ATTR_OP_OR;
 			goto out;
 		case '~':
 			token.type = TOK_BITWISE_NOT;
-			token.attr = ATTR_BITWISE_NOT;
 			goto out;
 		default:
 			break;
+		}
+
+		token = __lexer_parse_ident(lexer);
+		if (token.type != TOK_NULL) {
+			return token;
 		}
 
 		__lexical_error(lexer, "Illegal character");
@@ -395,7 +460,7 @@ static struct token __lexer_get_next_token(struct lexer *lexer)
 	}
 
 out:
-	lexer->current_column += token.namelen;
+	lexer->current_column += 1;
 	return token;
 }
 
@@ -424,8 +489,14 @@ static uint64_t expr_number(struct lexer *lexer)
 		return ret;
 	}
 
-	ret = lexer->lookahead_token.attr;
-	__expect(lexer, TOK_NUMBER);
+	if (lexer->lookahead_token.type == TOK_IDENT) {
+		ret = *(uint64_t *)symbol_value(
+			(struct symbol *)lexer->lookahead_token.attr);
+		__expect(lexer, TOK_IDENT);
+	} else {
+		ret = lexer->lookahead_token.attr;
+		__expect(lexer, TOK_NUMBER);
+	}
 	return ret;
 }
 
@@ -435,19 +506,25 @@ static uint64_t expr_function(struct lexer *lexer)
 	static uint64_t ops[FUNCTIONS_MAX_OPS] = { 0 };
 	uint64_t ret = 0;
 	size_t i;
+	struct symbol *sym;
 	bmath_func_t func;
 	struct token tok;
 
-	if (lexer->lookahead_token.type != TOK_FUNCTION) {
+	if (lexer->lookahead_token.type != TOK_IDENT) {
 		return expr_number(lexer);
 	}
 
 	memset(ops, 0, sizeof(ops));
 
 	tok = lexer->lookahead_token;
-	__expect(lexer, TOK_FUNCTION);
-	func = (bmath_func_t)tok.attr;
+	sym = (struct symbol *)tok.attr;
+	if (sym->type != SYMBOL_FUNCTION) {
+		return expr_number(lexer);
+	}
 
+	func = (bmath_func_t) * (uintptr_t *)symbol_value(sym);
+
+	__expect(lexer, TOK_IDENT);
 	__expect(lexer, TOK_LPAREN);
 	for (i = 0; i < sizeof(ops) / sizeof(ops[0]); i++) {
 		if (lexer->lookahead_token.type == TOK_RPAREN) {
@@ -465,8 +542,8 @@ static uint64_t expr_function(struct lexer *lexer)
 
 	err = func(&ret, i + 1, ops);
 	if (err) {
-		__lexical_error(lexer, "Function returned error code: %d %s",
-				err, str_func_err(err));
+		__lexical_error(lexer, "%s() returned error code: %d %s",
+				symbol_ident(sym), err, str_func_err(err));
 		return ret;
 	}
 
@@ -515,7 +592,7 @@ next:
 			ret = ~ret;
 			break;
 		case TOK_SIGN:
-			if (stack[j].attr == ATTR_SIGN_MINUS) {
+			if (stack[j].attr == '-') {
 				ret = -ret;
 			}
 			break;
@@ -542,7 +619,7 @@ static uint64_t expr_factor(struct lexer *lexer)
 		__expect(lexer, lexer->lookahead_token.type);
 		right = expr_signed(lexer);
 		switch (tok.attr) {
-		case ATTR_FACTOR_OP_MUL:
+		case '*':
 			left *= right;
 			break;
 		case '/':
@@ -552,7 +629,7 @@ static uint64_t expr_factor(struct lexer *lexer)
 			}
 			left /= right;
 			break;
-		case ATTR_FACTOR_OP_MOD:
+		case '%':
 			if (right == 0) {
 				__lexical_error(lexer, "Division by zero");
 				return left;
@@ -583,10 +660,10 @@ static uint64_t expr_add(struct lexer *lexer)
 		__expect(lexer, lexer->lookahead_token.type);
 		right = expr_factor(lexer);
 		switch (tok.attr) {
-		case ATTR_SIGN_PLUS:
+		case '+':
 			left += right;
 			break;
-		case ATTR_SIGN_MINUS:
+		case '-':
 			left -= right;
 			break;
 		default:
@@ -632,7 +709,7 @@ static uint64_t expr_and(struct lexer *lexer)
 	uint64_t left;
 
 	left = expr_shift(lexer);
-	if (lexer->lookahead_token.attr != ATTR_OP_AND)
+	if (lexer->lookahead_token.attr != '&')
 		return left;
 
 	__expect(lexer, TOK_OP);
@@ -644,7 +721,7 @@ static uint64_t expr_xor(struct lexer *lexer)
 	uint64_t left;
 
 	left = expr_and(lexer);
-	if (lexer->lookahead_token.attr != ATTR_OP_XOR)
+	if (lexer->lookahead_token.attr != '^')
 		return left;
 
 	__expect(lexer, TOK_OP);
@@ -656,14 +733,59 @@ static uint64_t expr_or(struct lexer *lexer)
 	uint64_t left;
 
 	left = expr_xor(lexer);
-	if (lexer->lookahead_token.attr != ATTR_OP_OR)
+	if (lexer->lookahead_token.attr != '|')
 		return left;
 
 	__expect(lexer, TOK_OP);
 	return left | expr_or(lexer);
 }
 
+static uint64_t expr_assignment(struct lexer *lexer)
+{
+	uint64_t ret;
+	struct token ident;
+	struct symbol *sym;
+	uint64_t sym_val;
+
+	ident = lexer->lookahead_token;
+	ret = expr_or(lexer);
+
+	if (ident.type != TOK_IDENT) {
+		return ret;
+	}
+
+	if (!ident.attr) {
+		__general_error(
+			lexer,
+			"Token doesn't have a symbol. This should not happen");
+		return 0;
+	}
+
+	sym = (struct symbol *)ident.attr;
+	if (sym->type != SYMBOL_VARIABLE) {
+		return ret;
+	}
+
+	sym_val = *(uint64_t *)symbol_value(sym);
+	if (lexer->lookahead_token.type != TOK_ASSIGNMENT) {
+		return ret;
+	}
+
+	__expect(lexer, TOK_ASSIGNMENT);
+	ret = expr(lexer);
+	__expect(lexer, TOK_TERMINATOR);
+
+	memcpy(symbol_value(sym), (void *)&ret, sizeof(ret));
+
+	// this allows multiline assignments
+	if (lexer->lookahead_token.type == TOK_NULL) {
+		return ret;
+	}
+
+	return expr_assignment(lexer);
+}
+
 static uint64_t expr(struct lexer *lexer)
 {
-	return expr_or(lexer);
+	return expr_assignment(lexer);
 }

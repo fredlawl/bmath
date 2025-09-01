@@ -1,25 +1,13 @@
 #pragma once
 
-#include <stdint.h>
-#include <asm-generic/errno-base.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
-#include <stdlib.h>
+#include <stdint.h>
 
-#include "functions.h"
-
-#define ATTR_LPAREN 1
-#define ATTR_RPAREN ATTR_LPAREN + 1
-#define ATTR_BITWISE_NOT ATTR_RPAREN + 1
-#define ATTR_LSHIFT ATTR_BITWISE_NOT + 1
+#define ATTR_MAXCHARACTER_SET 127
+#define ATTR_LSHIFT ATTR_MAXCHARACTER_SET + 1
 #define ATTR_RSHIFT ATTR_LSHIFT + 1
-#define ATTR_OP_AND ATTR_RSHIFT + 1
-#define ATTR_OP_OR ATTR_OP_AND + 1
-#define ATTR_OP_XOR ATTR_OP_OR + 1
-#define ATTR_FACTOR_OP_MUL ATTR_OP_XOR + 1
-#define ATTR_FACTOR_OP_MOD ATTR_FACTOR_OP_MUL + 1
-#define ATTR_SIGN_PLUS ATTR_FACTOR_OP_MOD + 1
-#define ATTR_SIGN_MINUS ATTR_SIGN_PLUS + 1
 #define ATTR_NULL UINT64_MAX
 
 enum token_type {
@@ -32,8 +20,10 @@ enum token_type {
 	TOK_BITWISE_NOT,
 	TOK_SIGN,
 	TOK_FACTOR_OP,
-	TOK_FUNCTION,
 	TOK_COMMA,
+	TOK_ASSIGNMENT,
+	TOK_IDENT,
+	TOK_TERMINATOR
 };
 
 static const char *lookup_token_name[] = {
@@ -46,19 +36,15 @@ static const char *lookup_token_name[] = {
 	[TOK_BITWISE_NOT] = "~",
 	[TOK_SIGN] = "+, or -",
 	[TOK_FACTOR_OP] = "*, /, or %",
-	[TOK_FUNCTION] = "function",
 	[TOK_COMMA] = ",",
+	[TOK_ASSIGNMENT] = "=",
+	[TOK_IDENT] = "identfier",
+	[TOK_TERMINATOR] = ";",
 };
 
 struct token {
 	uint64_t attr;
-	size_t namelen;
 	enum token_type type;
-};
-
-struct token_func {
-	char *name;
-	bmath_func_t func;
 };
 
 static inline const char *token_name(enum token_type tok)
@@ -70,11 +56,3 @@ static inline enum token_type token_type(struct token *tok)
 {
 	return tok->type;
 }
-
-struct token_tbl;
-
-struct token_tbl *token_tbl_new();
-void token_tbl_free(struct token_tbl *root);
-int token_tbl_insert(struct token_tbl *tbl, const char *key, struct token);
-struct token *token_tbl_lookup(struct token_tbl *tbl, const char *key);
-int token_tbl_register_func(struct token_tbl *tbl, struct token_func *func);
