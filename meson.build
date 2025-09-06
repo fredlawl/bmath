@@ -2,6 +2,7 @@
 # for deployment: meson install --tags runtime,man
 # for test: meson test
 project('bmath', 'c', version: '3.1.0', default_options: ['c_std=gnu11'])
+pkg = import('pkgconfig')
 
 add_project_arguments(
   [
@@ -35,17 +36,22 @@ configure_file(
 
 # Release
 libbmath_deps = [dependency('iconv')]
+libbmath_inc = include_directories('src')
 libbmath = shared_library(
   'bmath',
   'src/parser.c',
   'src/print.c',
   'src/symbol.c',
   'src/functions.c',
+  include_directories: libbmath_inc,
   dependencies: libbmath_deps,
   install: true,
   soversion: '1',
   version: '1.1.2',
 )
+libbmath_dep = declare_dependency(link_with: libbmath, include_directories: libbmath_inc)
+
+libini_dep = dependency('inih')
 
 # Test
 unity_dep = dependency('unity', static: true, required: false)
@@ -54,42 +60,54 @@ if unity_dep.found()
     'bmath_parser_test',
     'test/parser.c',
     install: false,
-    dependencies: [unity_dep],
-    link_with: libbmath,
+    dependencies: [unity_dep, libbmath_dep],
   )
 
   functions_test = executable(
     'bmath_functions_test',
     'test/functions.c',
     install: false,
-    dependencies: [unity_dep],
-    link_with: libbmath,
+    dependencies: [unity_dep, libbmath_dep],
   )
 
   conversions_test = executable(
     'bmath_conversions_test',
     'test/conversions.c',
     install: false,
-    dependencies: [unity_dep],
-    link_with: libbmath,
+    dependencies: [unity_dep, libbmath_dep],
+  )
+
+  config_test = executable(
+    'bmath_config_test',
+    'src/config.c',
+    'test/config.c',
+    install: false,
+    dependencies: [unity_dep, libini_dep],
   )
 
   test('parser', parser_test, args: [], verbose: true)
   test('functions', functions_test, args: [], verbose: true)
   test('conversions', conversions_test, args: [], verbose: true)
+  test('config', config_test, args: [], verbose: true)
 endif
 
 # todo: figure out argp dep for non-gnu platforms
-bmath_deps = [dependency('readline')]
+bmath_deps = [
+  dependency('readline'),
+  libini_dep,
+  libbmath_dep,
+]
 executable(
   'bmath',
+  'src/config.c',
+  'src/execute.c',
   'src/bmath.c',
   dependencies: bmath_deps,
-  link_with: libbmath,
   install: true,
-  install_rpath: join_paths(get_option('prefix'), get_option('libdir')),
   pie: true,
 )
 
 install_man('man/bmath.1')
+install_man('man/bmath-config.5')
+install_data('etc/bmath/config.conf', install_dir: '/etc/bmath')
 install_headers('src/print.h', 'src/parser.h', subdir: 'bmath')

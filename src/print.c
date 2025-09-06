@@ -3,280 +3,408 @@
 #include <inttypes.h>
 #include <limits.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <asm-generic/errno-base.h>
+#include <arpa/inet.h>
 
 #include "print.h"
 
-FILE *stream = NULL;
+static enum bits_t hex_enc_to_bits_lookup[] = {
+	[ENC_HEX] = BITS_MINIMAL,
+	[ENC_HEX16] = BITS_16,
+	[ENC_HEX32] = BITS_32,
+	[ENC_HEX64] = BITS_64,
+};
 
-static const char *to_encoding_lookup[] = { [ENC_UTF8] = "UTF-8",
-					    [ENC_UTF16] = "UTF-16BE",
-					    [ENC_UTF32] = "UTF-32BE" };
+static enum bits_t utf_enc_to_bits_lookup[] = {
+	[ENC_UTF8] = BITS_8,
+	[ENC_UTF16] = BITS_16,
+	[ENC_UTF32] = BITS_32,
+};
 
-static const char *from_encoding_lookup[] = { [ENC_UTF8] = "UTF-8",
-					      [ENC_UTF16] = "UTF-16LE",
-					      [ENC_UTF32] = "UTF-32LE" };
+static int justify_offsets[] = {
+	[ENC_ASCII] = 6, // ascii:
+	[ENC_BINARY] = 0,
+	[ENC_HEX] = 4, // hex:
+	[ENC_HEX16] = 6, // hex16:
+	[ENC_HEX32] = 6, // hex32:
+	[ENC_HEX64] = 6, // hex64:
+	[ENC_INT] = 4, // i16: this breaks for i8
+	[ENC_UINT] = 4, // u64:
+	[ENC_UNICODE] = 8, // unicode:
+	[ENC_UTF8] = 8, // utf-8be:
+	[ENC_UTF16] = 9, // utf-16be:
+	[ENC_UTF32] = 9 // utf-32be:
+};
 
-static const char *to_encoding_pretty_print_lookup[] = { [ENC_UTF8] = " UTF-8",
-							 [ENC_UTF16] = "UTF-16",
-							 [ENC_UTF32] =
-								 "UTF-32" };
-
-static iconv_t iconv_descriptors[ENC_UTF32 + 1] = { 0 };
-
-static bool iconv_setup = false;
-
-static void print_teardown()
+ssize_t print_all(FILE *stream, uint64_t num, enum encoding_t encode_order[],
+		  size_t encode_order_len, enum format_t fmt,
+		  enum output_format_t output_fmt)
 {
-	iconv_close(iconv_descriptors[ENC_UTF8]);
-	iconv_close(iconv_descriptors[ENC_UTF16]);
-	iconv_close(iconv_descriptors[ENC_UTF32]);
+#define BUF_SIZE 128
+	size_t i;
+	int prefix;
+	enum encoding_t enc;
+	ssize_t bytes_written = 0;
+	int longest_justify_offset = 0;
+	bool do_justify = (fmt & FMT_HUMAN) && (output_fmt & OUT_FMT_JUSTIFY) &&
+			  encode_order_len > 1;
+
+	if (do_justify) {
+		for (i = 0; i < encode_order_len; i++) {
+			enc = encode_order[i];
+			if (justify_offsets[enc] > longest_justify_offset) {
+				longest_justify_offset = justify_offsets[enc];
+			}
+		}
+	}
+
+	for (i = 0; i < encode_order_len; i++) {
+		enc = encode_order[i];
+		char buff[BUF_SIZE] = { 0 };
+		size_t written_bytes = 0;
+		ssize_t bytes = 0;
+
+		if (i > 0) {
+			memset(buff, '\n', sizeof(char));
+			bytes += sizeof(char);
+		}
+
+		if (do_justify && justify_offsets[enc]) {
+			prefix = longest_justify_offset - justify_offsets[enc] +
+				 (enc == ENC_INT && num <= UINT8_MAX);
+			if (prefix) {
+				bytes += snprintf(buff + bytes, BUF_SIZE, "%*c",
+						  prefix, ' ');
+			}
+		}
+
+		switch (enc) {
+		case ENC_ASCII:
+			bytes += ascii_str(buff + bytes, BUF_SIZE - bytes, num,
+					   fmt);
+			break;
+		case ENC_BINARY:
+			bytes += binary_str(buff + bytes, BUF_SIZE - bytes, num,
+					    fmt);
+			break;
+		case ENC_INT:
+		case ENC_UINT:
+			bytes += int_str(buff + bytes, BUF_SIZE - bytes, num,
+					 enc == ENC_UINT, fmt);
+			break;
+		case ENC_HEX:
+		case ENC_HEX16:
+		case ENC_HEX32:
+		case ENC_HEX64:
+			bytes += hex_str(buff + bytes, BUF_SIZE - bytes, num,
+					 hex_enc_to_bits_lookup[enc], fmt);
+			break;
+		case ENC_UNICODE:
+			bytes += unicode_str(buff + bytes, BUF_SIZE - bytes,
+					     num, fmt);
+			break;
+		case ENC_UTF8:
+		case ENC_UTF16:
+		case ENC_UTF32:
+			bytes += utf_str(buff + bytes, BUF_SIZE - bytes, num,
+					 utf_enc_to_bits_lookup[enc], fmt);
+			break;
+		default:
+			return EINVAL;
+		}
+
+		if (bytes < 0) {
+			return -ENOMEM;
+		}
+
+		if (bytes == 0) {
+			continue;
+		}
+
+		written_bytes = fwrite(buff, sizeof(char), bytes, stream);
+		if (written_bytes < (size_t)bytes) {
+			return -ENOMEM;
+		}
+
+		bytes_written += written_bytes;
+	}
+
+	return bytes_written;
 }
 
-static void print_setup_unicode()
+ssize_t binary_str(char *dest, size_t dest_len, uint64_t number,
+		   enum format_t fmt)
 {
+	size_t min_size = (sizeof(number) * 8) + 7;
+
+	if (!dest) {
+		return min_size;
+	}
+
+	if (dest_len < min_size) {
+		return -EINVAL;
+	}
+
+	memset(dest, '0', min_size);
+
+	// Print table can be pre-allocated
+	dest[8] = ' ';
+	dest[16 + 1] = ' ';
+	dest[24 + 2] = ' ';
+	dest[32 + 3] = '\n';
+	dest[40 + 4] = ' ';
+	dest[48 + 5] = ' ';
+	dest[56 + 6] = ' ';
+
+	int i = 0;
+	while (number) {
+		i += dest[min_size - i] != '0';
+		dest[min_size - i] = (number & 0x1) + '0';
+		number >>= 1;
+		i++;
+	}
+
+	return min_size;
+}
+
+// TODO: Make this work with NULL dest like snprintf
+ssize_t ascii_str(char *dest, size_t dest_len, uint64_t number,
+		  enum format_t fmt)
+{
+	size_t min_size = sizeof("Ascii: ") - 1 + sizeof("<special>") - 1;
+	size_t bytes = 0;
+
+	if (dest_len < min_size) {
+		return -EINVAL;
+	}
+
+	if (fmt & FMT_HUMAN) {
+		memcpy(dest, "Ascii: ", sizeof("Ascii: ") - 1);
+		bytes += sizeof("Ascii: ") - 1;
+	}
+
+	if (number <= CHAR_MAX) {
+		if (number <= 31) {
+			memcpy(dest + bytes, "<special>",
+			       sizeof("<special>") - 1);
+			bytes += sizeof("<special>") - 1;
+		} else {
+			memcpy(dest + bytes, (char *)&number, sizeof(char));
+			bytes += 1;
+		}
+	} else {
+		memcpy(dest + bytes, "Exceeded", sizeof("Excceded") - 1);
+		bytes += sizeof("Exceeded") - 1;
+	}
+
+	return bytes;
+}
+
+ssize_t hex_str(char *dest, size_t dest_len, uint64_t number, enum bits_t bits,
+		enum format_t fmt)
+{
+	char *prefix;
+	char *sdfmt = (fmt & FMT_UPPERCASE) ? "%s0x%0*" PRIX64 :
+					      "%s0x%0*" PRIx64;
+	char *sfmt = (fmt & FMT_UPPERCASE) ? "%s0x%" PRIX64 : "%s0x%" PRIx64;
+	int zeros = 2;
+
+	switch (bits) {
+	case BITS_16:
+		prefix = (fmt & FMT_HUMAN) ? "Hex16: " : "";
+		if (number > UINT16_MAX) {
+			return snprintf(dest, dest_len, "%sExceeded", prefix);
+		}
+		zeros *= 2;
+		break;
+	case BITS_32:
+		prefix = (fmt & FMT_HUMAN) ? "Hex32: " : "";
+		if (number > UINT32_MAX) {
+			return snprintf(dest, dest_len, "%sExceeded", prefix);
+		}
+		zeros *= 4;
+		break;
+	case BITS_64:
+		prefix = (fmt & FMT_HUMAN) ? "Hex64: " : "";
+		zeros *= 8;
+		break;
+	default:
+		prefix = (fmt & FMT_HUMAN) ? "Hex: " : "";
+		break;
+	}
+
+	if (zeros == 2) {
+		return snprintf(dest, dest_len, sfmt, prefix, number);
+	}
+
+	return snprintf(dest, dest_len, sdfmt, prefix, zeros, number);
+}
+
+ssize_t int_str(char *dest, size_t dest_len, uint64_t number, bool is_unsigned,
+		enum format_t fmt)
+{
+	if (is_unsigned) {
+		return snprintf(dest, dest_len, "%s%" PRIu64,
+				(fmt & FMT_HUMAN) ? "u64: " : "", number);
+	}
+
+	if (number <= UINT8_MAX) {
+		return snprintf(dest, dest_len, "%s%" PRId8,
+				(fmt & FMT_HUMAN) ? "i8: " : "",
+				(int8_t)number);
+	} else if (number <= UINT16_MAX) {
+		return snprintf(dest, dest_len, "%s%" PRId16,
+				(fmt & FMT_HUMAN) ? "i16: " : "",
+				(int16_t)number);
+	} else if (number <= UINT32_MAX) {
+		return snprintf(dest, dest_len, "%s%" PRId32,
+				(fmt & FMT_HUMAN) ? "i32: " : "",
+				(int32_t)number);
+	}
+
+	return snprintf(dest, dest_len, "%s%" PRId64,
+			(fmt & FMT_HUMAN) ? "i64: " : "", (int64_t)number);
+}
+
 #define ICONV_ERR ((iconv_t) - 1)
+
+static const char *to_encoding_lookup[] = { [BITS_8] = "UTF-8",
+					    [BITS_16] = "UTF-16BE",
+					    [BITS_32] = "UTF-32BE" };
+
+static const char *from_encoding_lookup[] = { [BITS_8] = "UTF-8",
+					      [BITS_16] = "UTF-16LE",
+					      [BITS_32] = "UTF-32LE" };
+
+static iconv_t
+	iconv_descriptors[] = { [BITS_8] = 0, [BITS_16] = 0, [BITS_32] = 0 };
+static bool iconv_setup = false;
+
+static void unicode_teardown()
+{
+	iconv_close(iconv_descriptors[BITS_8]);
+	iconv_close(iconv_descriptors[BITS_16]);
+	iconv_close(iconv_descriptors[BITS_32]);
+}
+
+static void unicode_setup()
+{
 	int err;
+
+	if (iconv_setup) {
+		return;
+	}
+
 	iconv_setup = true;
 
-	iconv_descriptors[ENC_UTF8] = iconv_open(
-		to_encoding_lookup[ENC_UTF8], from_encoding_lookup[ENC_UTF32]);
-	assert(iconv_descriptors[ENC_UTF8] != ICONV_ERR);
+	iconv_descriptors[BITS_8] = iconv_open(to_encoding_lookup[BITS_8],
+					       from_encoding_lookup[BITS_32]);
+	assert(iconv_descriptors[BITS_8] != ICONV_ERR);
 
-	iconv_descriptors[ENC_UTF16] = iconv_open(
-		to_encoding_lookup[ENC_UTF16], from_encoding_lookup[ENC_UTF32]);
-	assert(iconv_descriptors[ENC_UTF16] != ICONV_ERR);
+	iconv_descriptors[BITS_16] = iconv_open(to_encoding_lookup[BITS_16],
+						from_encoding_lookup[BITS_32]);
+	assert(iconv_descriptors[BITS_16] != ICONV_ERR);
 
-	iconv_descriptors[ENC_UTF32] = iconv_open(
-		to_encoding_lookup[ENC_UTF32], from_encoding_lookup[ENC_UTF32]);
-	assert(iconv_descriptors[ENC_UTF32] != ICONV_ERR);
+	iconv_descriptors[BITS_32] = iconv_open(to_encoding_lookup[BITS_32],
+						from_encoding_lookup[BITS_32]);
+	assert(iconv_descriptors[BITS_32] != ICONV_ERR);
 
 	// It's better to keep around these pointers than to constantly
 	// open/close. From a library implementation perspective the next
 	// few lines suck, but I want valgrind to be happy.
 	// I also don't want to implement a context for printing just
 	// for iconv handling.
-	err = atexit(print_teardown);
+	err = atexit(unicode_teardown);
 	assert(err == 0);
 }
 
-static void print_unicode(uint64_t num, bool uppercase_hex,
-			  enum encoding_t to_unicode)
+static ssize_t do_unicode_conversion(uint64_t number, enum bits_t bits,
+				     char *output, size_t *output_size)
 {
 	iconv_t cd;
-	size_t conversion;
+	size_t bytes_converted;
+	char *input = (char *)&number;
+	size_t input_size = sizeof(number);
 
-	char number_as_byte_array[8] = { 0 };
-	char *utf8_input = number_as_byte_array;
-	char *to_unicode_input = number_as_byte_array;
-	size_t in_size = sizeof number_as_byte_array;
-	size_t in_bytes_size = sizeof number_as_byte_array;
-
-	char utf8_buf[8] = { 0 };
-	char *utf8 = utf8_buf;
-	char to_unicode_buf[8] = { 0 };
-	char *to_unicode_bytes = to_unicode_buf;
-	size_t utf8_size = sizeof utf8_buf;
-	size_t to_unicode_size = sizeof to_unicode_buf;
-
-	size_t offset[] = { [ENC_UTF8] = 1, [ENC_UTF16] = 2, [ENC_UTF32] = 4 };
-
-	if (num > UINT32_MAX) {
-		fprintf(stream, "%s: Exceeded\n",
-			to_encoding_pretty_print_lookup[to_unicode]);
-		return;
+	unicode_setup();
+	if (number > UINT32_MAX) {
+		return -E2BIG;
 	}
 
-	memcpy(&number_as_byte_array, &num, sizeof num);
-
-	fprintf(stream, "%s: ", to_encoding_pretty_print_lookup[to_unicode]);
-
-	// Convert to UTF-8
-	if (num < 31) {
-		fputs("<special> ", stream);
-	} else {
-		cd = iconv_descriptors[ENC_UTF8];
-		conversion =
-			iconv(cd, &utf8_input, &in_size, &utf8, &utf8_size);
-
-		if (conversion == (size_t)-1) {
-			fputs("<invalid> ", stream);
-		} else {
-			fprintf(stream, "%s ", utf8_buf);
-		}
+	cd = iconv_descriptors[bits];
+	bytes_converted = iconv(cd, &input, &input_size, &output, output_size);
+	if (bytes_converted == (size_t)-1) {
+		return -EINVAL;
 	}
 
-	// Convert from_unicode to to_unicode
-	cd = iconv_descriptors[to_unicode];
-	conversion = iconv(cd, &to_unicode_input, &in_bytes_size,
-			   &to_unicode_bytes, &to_unicode_size);
+	return bytes_converted;
+}
 
-	if (conversion == (size_t)-1) {
-		fputs("<invalid>\n", stream);
-		return;
+ssize_t utf_str(char *dest, size_t dest_len, uint64_t number, enum bits_t bits,
+		enum format_t fmt)
+{
+	static size_t offset[] = { [BITS_8] = 1, [BITS_16] = 2, [BITS_32] = 4 };
+	static const char *prefix_match[] = { [BITS_8] = "UTF-8BE: ",
+					      [BITS_16] = "UTF-16BE: ",
+					      [BITS_32] = "UTF-32BE: " };
+
+	const char *prefix;
+	ssize_t conversion;
+	char output[8] = { 0 };
+	size_t output_size = sizeof(output);
+	const char *hex_fmt = (fmt & FMT_UPPERCASE) ? "%02" PRIX64 :
+						      "%02" PRIx64;
+
+	prefix = (fmt & FMT_HUMAN) ? prefix_match[bits] : "";
+
+	if (number > UINT32_MAX) {
+		return snprintf(dest, dest_len, "%sExceeded", prefix);
 	}
 
-	fputs("(0x", stream);
+	conversion = do_unicode_conversion(number, bits, output, &output_size);
+	if (conversion < 0) {
+		return snprintf(dest, dest_len, "%s<invalid>", prefix);
+	}
 
 	/*
-	 re: offset
-	 This kind of works because iconv decrements the output buffer size, and we
-	 know based on UTF8-16 if there's 1-2 null bytes at the end of our buffer,
-	 and with UTF32, the null character is 4 bytes.
-	 */
-	for (size_t i = 0; i < 8 - (to_unicode_size + offset[to_unicode]);
-	     i++) {
-		__print_hex((uint64_t)0xff & to_unicode_buf[i], 2,
-			    uppercase_hex);
+		 re: offset
+		 This kind of works because iconv decrements the output buffer size, and we
+		 know based on UTF8-16 if there's 1-2 null bytes at the end of our buffer,
+		 and with UTF32, the null character is 4 bytes.
+	*/
+	ssize_t bytes = 0;
+	bytes += snprintf(dest, dest_len, "%s0x", prefix);
+	for (size_t i = 0; i < 8 - (output_size + offset[bits]); i++) {
+		bytes += snprintf(dest + bytes, dest_len - bytes, hex_fmt,
+				  (uint64_t)0xff & output[i]);
 	}
 
-	fputs(")\n", stream);
+	return bytes;
 }
 
-static inline void ensure_stream()
+ssize_t unicode_str(char *dest, size_t dest_len, uint64_t number,
+		    enum format_t fmt)
 {
-	if (!stream)
-		stream = stdout;
-}
+	const char *prefix = (fmt & FMT_HUMAN) ? "Unicode: " : "";
+	char output[8] = { 0 };
+	size_t output_size = sizeof(output);
+	ssize_t conversion;
 
-void print_set_stream(FILE *s)
-{
-	stream = s;
-}
-
-void print_hex(bool u, int b, uint64_t n)
-{
-	ensure_stream();
-	if (u) {
-		fprintf(stream, "%0*" PRIX64, b, n);
-	} else {
-		fprintf(stream, "%0*" PRIx64, b, n);
-	}
-}
-
-void print_binary(uint64_t number)
-{
-	// (bytes * bits per byte) + 2 newlines + 6 spaces + 1 null
-	char buff[(sizeof(number) * 8) + 8 + 1] = { 0 };
-	memset(buff, '0', sizeof(buff) - 1);
-
-	// Print table can be pre-allocated
-	buff[8] = ' ';
-	buff[16 + 1] = ' ';
-	buff[24 + 2] = ' ';
-	buff[32 + 3] = '\n';
-	buff[40 + 4] = ' ';
-	buff[48 + 5] = ' ';
-	buff[56 + 6] = ' ';
-	buff[64 + 7] = '\n';
-
-	int i = 2;
-	while (number) {
-		i += buff[sizeof(buff) - i] != '0';
-		buff[sizeof(buff) - i] = (number & 0x1) + '0';
-		number >>= 1;
-		i++;
+	if (number < 31) {
+		return snprintf(dest, dest_len, "%s<special>", prefix);
 	}
 
-	ensure_stream();
-	/*
-   * The last null byte could be removed from the array, but incase
-   * this ever gets changed to be more like sprintf() or something,
-   * always include it. Just don't write it.
-   */
-	fwrite(buff, sizeof(buff) - 1, 1, stream);
-}
-
-void print_number(uint64_t num, bool uppercase_hex, int encoding_mask)
-{
-	if (encoding_mask == ENC_NONE) {
-		return;
+	conversion =
+		do_unicode_conversion(number, BITS_8, output, &output_size);
+	if (conversion < 0) {
+		return snprintf(dest, dest_len, "%s<invalid>", prefix);
 	}
 
-	ensure_stream();
-	fprintf(stream, "   u64: %" PRIu64 "\n", num);
-
-	if (num <= 0xff) {
-		fprintf(stream, "    i8: %" PRId8 "\n", (int8_t)num);
-	} else if (num <= 0xffff) {
-		fprintf(stream, "   i16: %" PRId16 "\n", (int16_t)num);
-	} else if (num <= 0xffffffff) {
-		fprintf(stream, "   i32: %" PRId32 "\n", (int32_t)num);
-	} else {
-		fprintf(stream, "   i64: %" PRId64 "\n", (int64_t)num);
-	}
-
-	if (encoding_mask & ENC_ASCII) {
-		if (num <= CHAR_MAX) {
-			if (num <= 31) {
-				fputs("  char: <special>\n", stream);
-			} else {
-				fprintf(stream, "  char: %c\n", (char)num);
-			}
-		} else {
-			fputs("  char: Exceeded\n", stream);
-		}
-	}
-
-	if (encoding_mask & ENC_UTF) {
-		if (!iconv_setup) {
-			print_setup_unicode();
-		}
-
-		if ((encoding_mask & ENC_UTF8) == ENC_UTF8) {
-			print_unicode(num, uppercase_hex, ENC_UTF8);
-		}
-
-		if ((encoding_mask & ENC_UTF16) == ENC_UTF16) {
-			print_unicode(num, uppercase_hex, ENC_UTF16);
-		}
-
-		if ((encoding_mask & ENC_UTF32) == ENC_UTF32) {
-			print_unicode(num, uppercase_hex, ENC_UTF32);
-		}
-	}
-
-	fputs("   Hex: 0x", stream);
-	__print_hex(num, 0, uppercase_hex);
-	fputc('\n', stream);
-
-	if (num <= UINT16_MAX) {
-		fputs(" Hex16: 0x", stream);
-		__print_hex(num, 4, uppercase_hex);
-		fputc('\n', stream);
-	} else {
-		fputs(" Hex16: Exceeded\n", stream);
-	}
-
-	if (num <= UINT32_MAX) {
-		fputs(" Hex32: 0x", stream);
-		__print_hex(num, 8, uppercase_hex);
-		fputc('\n', stream);
-	} else {
-		fputs(" Hex32: Exceeded\n", stream);
-	}
-
-	fputs(" Hex64: 0x", stream);
-	__print_hex(num, 16, uppercase_hex);
-	fputc('\n', stream);
-}
-
-void print_alignment(uint64_t alignment, uint64_t num, bool uppercase_hex)
-{
-	uint64_t mask = alignment - 1;
-	uint64_t up = (num + mask) & ~mask;
-	uint64_t down = num & ~mask;
-	ensure_stream();
-
-	fputs("algn d: 0x", stream);
-	__print_hex(down, 16, uppercase_hex);
-
-	fputs("\nalgn u: 0x", stream);
-	__print_hex(up, 16, uppercase_hex);
-
-	fprintf(stream, " (%lu blocks)\n", down / (alignment - 1) + 1);
+	return snprintf(dest, dest_len, "%s%s", prefix, output);
 }

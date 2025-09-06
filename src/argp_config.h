@@ -1,8 +1,14 @@
 #pragma once
 
+#include "print.h"
+#include <asm-generic/errno-base.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <strings.h>
 #include <argp.h>
+
+#include "config.h"
 
 const char *argp_program_bug_address = "Frederick Lawler <me@fred.software>";
 
@@ -15,31 +21,44 @@ static char doc[] = "\nUsage examples:"
 		    "\n\t./bmath"
 		    "\n\nSee bmath(1) for detailed examples and explinations.";
 
+#define CFG_NONE 0UL
+#define CFG_FMT_ENCODINGS (1UL << 0)
+#define CFG_FMT_HUMAN (1UL << 1)
+#define CFG_FMT_JUTSIFY (1UL << 2)
+#define CFG_FMT_UPPERCASE (1UL << 3)
+
 struct arguments {
-	char *alignment_expr;
-	char *detached_expr;
+	char *config_file;
+	char *headless;
 	char *watch_path;
-	bool print_binary;
-	bool should_show_unicode;
-	bool should_uppercase_hex;
 	bool watch;
+	struct config *cfg;
+	uint64_t cfg_changed;
 };
 
 enum argument_opts {
-	OPT_UPPERCASE = 'u',
-	OPT_BINARY = 'b',
-	OPT_UNICODE = 128,
-	OPT_ALIGN = 'a',
-	OPT_WATCH = 'w'
+	OPT_CONFIG = 'c',
+	OPT_ENCODINGS = 'e',
+	OPT_FMT_HUMAN = 128,
+	OPT_FMT_JUSTIFY = 129,
+	OPT_FMT_UPPERCASE = 130,
+	OPT_WATCH = 'w',
 };
 
 static struct argp_option options[] = {
-	{ "align", OPT_ALIGN, "EXPR", 0,
-	  "Print input expression's alignment according to alignment expression. Alignment expression should be power of 2, but it's not enforced",
+	{ "config", OPT_CONFIG, "FILE", 0,
+	  "Specify a confgiuration file for the program", 0 },
+	{ "fmt-encodings", OPT_ENCODINGS, "ENCODINGS", 0,
+	  "Comma separated list of encodings. Defaults to 'uint'. For all, use 'all'. Set to empty to not display anything. See bmath-config(5) for details",
 	  0 },
-	{ "binary", OPT_BINARY, 0, 0, "Print the result in binary", 0 },
-	{ "unicode", OPT_UNICODE, 0, 0, "Print unicode characters", 0 },
-	{ "uppercase", OPT_UPPERCASE, 0, 0, "Uppercase hex output", 0 },
+	{ "fmt-human", OPT_FMT_HUMAN, 0, 0,
+	  "Prefixes output with the type of data. See bmath-config(5) for details",
+	  0 },
+	{ "fmt-justify", OPT_FMT_JUSTIFY, 0, 0,
+	  "Align the left side of output to the first ':', if --fmt-human is set. See bmath-config(5) for details",
+	  0 },
+	{ "fmt-uppercase", OPT_FMT_UPPERCASE, 0, 0,
+	  "Uppercase hex output. See bmath-config(5) for details", 0 },
 	{ "watch", OPT_WATCH, 0, OPTION_NO_USAGE,
 	  "Watches file for changes. ie. Live reloading. When enabled, stdin capabilities are disabled, and requires a file path to input file as first program argument",
 	  0 },
@@ -48,20 +67,36 @@ static struct argp_option options[] = {
 
 static error_t parse_opt(int key, char *arg, struct argp_state *state)
 {
+	ssize_t encodings;
 	struct arguments *arguments = (struct arguments *)state->input;
 
 	switch (key) {
-	case OPT_UPPERCASE:
-		arguments->should_uppercase_hex = true;
+	case OPT_CONFIG:
+		arguments->config_file = arg;
 		break;
-	case OPT_BINARY:
-		arguments->print_binary = true;
+	case OPT_ENCODINGS:
+		// free previously allocated
+		free(arguments->cfg->encoding_order);
+		encodings = parse_encodings_list(
+			arg, &arguments->cfg->encoding_order);
+		if (encodings < 0) {
+			argp_error(state, "Invalid value for -e: %s", arg);
+			return EINVAL;
+		}
+		arguments->cfg->encoding_order_len = encodings;
+		arguments->cfg_changed |= CFG_FMT_ENCODINGS;
 		break;
-	case OPT_UNICODE:
-		arguments->should_show_unicode = true;
+	case OPT_FMT_HUMAN:
+		arguments->cfg->enc_fmt |= FMT_HUMAN;
+		arguments->cfg_changed |= CFG_FMT_HUMAN;
 		break;
-	case OPT_ALIGN:
-		arguments->alignment_expr = arg;
+	case OPT_FMT_JUSTIFY:
+		arguments->cfg->output_fmt |= OUT_FMT_JUSTIFY;
+		arguments->cfg_changed |= CFG_FMT_JUTSIFY;
+		break;
+	case OPT_FMT_UPPERCASE:
+		arguments->cfg->enc_fmt |= FMT_UPPERCASE;
+		arguments->cfg_changed |= CFG_FMT_UPPERCASE;
 		break;
 	case OPT_WATCH:
 		arguments->watch = true;
@@ -73,11 +108,13 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 		}
 
 		if (state->arg_num == 0) {
-			arguments->detached_expr = arg;
+			arguments->headless = arg;
 			break;
 		}
 
-		return ARGP_ERR_UNKNOWN;
+		argp_error(state, "Invalid value for positional argument: %s",
+			   arg);
+		return EINVAL;
 	default:
 		return ARGP_ERR_UNKNOWN;
 	}

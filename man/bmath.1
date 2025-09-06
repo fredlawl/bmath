@@ -6,16 +6,10 @@
 .Nd prints result of some bitwise expression in a pretty format
 .Sh SYNOPSIS
 .Nm
-.Op Fl a Ar <EXPRESSION>
-.Op Fl b
-.Op Fl u
-.Op Fl -unicode
+.Op Ar OPTIONS...
 .Op Ar EXPRESSION
 .Nm
-.Op Fl a Ar <EXPRESSION>
-.Op Fl b
-.Op Fl u
-.Op Fl -unicode
+.Op Ar OPTIONS...
 .Ar -w \fI<FILE>\fR
 .Nm
 .Op Fl -help
@@ -30,16 +24,18 @@ Prints the result of some bitwise \fIEXPRESSION\fR. These are parsed through \fI
 Interactive mode can be exited by typing \fIexit\fR or \fIquit\fR.
 .Sh OPTIONS
 .Bl -tag -width Ds
-.It Fl a\ \fI<EXPRESSION>\fR, Fl -align=\fI<EXPRESSION>\fR
-Takes the evauluation from the \fIEXPRESSION\fR, \fBstdin\fR, \fBlive-edit\fR, or \fBinteractive\fR modes, and then aligns the output to the alignment expression. It helps if this alignment is a power of 2, but it's not enforced. Otherwise, all evaulation logic applies to the alignment expression.
-.It Fl b
-Appends binary representation of result to output.
+.It Fl c\ \fI<FILE>\fR, Fl -config=\fI<FILE>\fR
+Loads configuration from specified file path.
+.It Fl e\ \fI<ENCODINGS>\fR, Fl -fmt-encodings=\fI<ENCODINGS>\fR
+Comma separated lsit of encodings. Defaults to 'uint'. For all, use 'all'. Set to empty to not display anything. See \fIbmath-config(5)\fR for more details.
+.It Fl -fmt-human
+Prefixes output with the type of data. See \fIbmath-config(5)\fR for more details.
+.It Fl -fmt-justify
+Align the left side of output to the first ':', if \fB--fmt-human\fR is set. See \fIbmath-config(5)\fR for more details.
+.It Fl -fmt-uppercase
+Uppercase hex output. See \fIbmath-config(5)\fR for more details.
 .It Fl -help
 Prints help information.
-.It Fl u, Fl -uppercase
-Prints hexadecimal output in uppercase.
-.It Fl -unicode
-Appends unicode representation of result to output in UTF-8, 16, and 32 forms.
 .It Fl -usage
 Prints usage message.
 .It Fl V, Fl -version
@@ -53,11 +49,11 @@ assignment = variable, "=", expr, ";" ;
 expr = signed, op, signed
      | signed ; 
 signed = number
-       | lparen, expr, rparen
-       | { logic_not | sign }, signed
+       | "(", expr, ")"
+       | { "~" | sign }, signed
        | function
        | variable ; 
-function = ident, lparen, expr, {",", expr }, rparen ;
+function = ident, "(", expr, {",", expr }, ")" ;
 number = digit, { digit }
        | hex ;
 variable = "@", ident ;
@@ -65,9 +61,6 @@ digit = [0-9], { [0-9] } ;
 hex = "0x", [0-9a-fA-F], { [0-9a-fA-F] } ;
 ident = [_0-9a-fA-F], { [_0-9a-fA-F] } ;
 op = "|" | "^" | "&" | "<<" | ">>" | "-" | "+" | "*" | "/" | "%" ;
-lparen = "(" ;
-rparen = ")" ;
-logic_not = "~" ;
 sign = "-" | "+" ;
 
 Functions:
@@ -115,47 +108,26 @@ Order of operations:
 .Ed
 .Sh EXAMPLES
 .Bd -literal
-$ echo "1 << 17" | bmath
-1 << 17
-  Dec: 131072
- Char: Exceeded
-  Hex: 0x20000
-Hex16: Exceeded
-Hex32: 0x00020000
-Hex64: 0x0000000000020000
 
-$ bmath --unicode -b "0xff"
-   u64: 255
-    i8: -1
- UTF-8: ÿ (0xc3bf)
-UTF-16: ÿ (0x00ff)
-UTF-32: ÿ (0x000000ff)
-   Hex: 0xff
- Hex16: 0x00ff
- Hex32: 0x000000ff
- Hex64: 0x00000000000000ff
+.Sy Simple expression: 
+
+$ bmath -e "binary" "8"
 00000000 00000000 00000000 00000000
-00000000 00000000 00000000 11111111
+00000000 00000000 00000000 00001000
 
-$ bmath
-expr> 0xff
-   u64: 255
-    i8: -1
-  char: Exceeded
-   Hex: 0xff
- Hex16: 0x00ff
- Hex32: 0x000000ff
- Hex64: 0x00000000000000ff
-expr> 0x0f
-   u64: 15
-    i8: 15
-  char: <special>
-   Hex: 0xf
- Hex16: 0x000f
- Hex32: 0x0000000f
- Hex64: 0x000000000000000f
-expr> exit
+.Sy Functions: 
+
+$ bmath -e "int" "clz(8, 1)"
+4
+
+.Sy Variables:
+
+$ bmath -e "binary" @shift = 8; @1 = 1; @1 << @shift"
+00000000 00000000 00000000 00000000
+00000000 00000000 00000001 00000000
 .Ed
+.Sh SEE ALSO
+.Xr bmath-config 5
 .Sh AUTHOR
 Written by Frederick Lawler <me@fred.software>
 .Sh REPORTING BUGS

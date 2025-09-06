@@ -1,0 +1,111 @@
+.Dd September 14, 2025
+.Dt BMATH-CONFIG 5
+.Os
+.Sh NAME
+.Nm bmath-config
+.Nd configuration file
+.Sh DESCRIPTION
+The configuration uses the INI file format.
+
+Configuration files are searched and applied in this order:
+
+.Bl -enum
+.It
+/etc/bmath/config.conf
+.It
+$XDG_CONFIG_HOME/bmath/config.conf
+.It
+$HOME/.config/bmath/config.conf
+.It
+\&./.bmath.conf
+.El
+
+The apply order allows for partial configurations. The /etc/bmath/config.conf file ships with all of the defaults.
+
+.Sh FORMAT SECTION
+
+Section header:
+.Sy [format]
+
+.Bd -filled -offset left
+.Sy encodings 
+.Dl
+Type: string
+.Dl
+Available Options: all, ascii, binary, hex, hex16, hex32, hex64, int, uint, unicode, utf8, utf16, utf32
+.Dl
+Default: uint
+
+A comma-delimited string of encodings. The order dictates output order. The 'all' option may be specified in isolation to print everything. When empty, there is no output.
+
+Config Example: uint,ascii,binary 
+
+.Bd -literal
+Output example (with human and justify enabled):
+$ bmath -e 'all' --fmt-human --fmt-justify "63"
+   Ascii: ?
+00000000 00000000 00000000 00000000
+00000000 00000000 00000000 00111111
+     Hex: 0x3f
+   Hex16: 0x003f
+   Hex32: 0x0000003f
+   Hex64: 0x000000000000003f
+      i8: 63
+     u64: 63
+ Unicode: ?
+ UTF-8BE: 0x3f
+UTF-16BE: 0x003f
+UTF-32BE: 0x0000003f
+.Ed
+.Ed
+
+.Bd -filled -offset left
+.Sy human 
+.Dl
+Type: boolean
+.Dl
+Available Options: true, false
+.Dl
+Default: false
+
+Prepends the result with a human-readable prefix for the encoding.
+
+Output example: Hex: 0xab
+.Ed
+
+.Bd -filled -offset left
+.Sy justify
+.Dl
+Type: boolean
+.Dl
+Available Options: true, false
+.Dl
+Default: false
+
+When human is enabled, this option aligns the encoding prefix to the longest prefix in the list of encodings to the colon (:) character. The binary encoding does not have a justify form.
+
+Output example:
+
+    Hex: 0xab
+.Dl
+Unicode: «
+.Ed
+
+.Bd -filled -offset left
+.Sy uppercase 
+.Dl
+Type: boolean
+.Dl
+Available Options: true, false
+.Dl
+Default: false
+
+Converts hex output to it's uppercase form.
+
+Output example: 0xAB
+.Ed
+
+.Sh AUTHOR
+Written by Frederick Lawler <me@fred.software>
+.Sh REPORTING BUGS
+Report any bugs to <https://github.com/fredlawl/bmath>

@@ -9,15 +9,17 @@ b_dir=./b_perf_test
 
 function perf_test() {
   report_dir=$1
-  build_dir=$2
+  src_dir=$2
+  build_dir=$2/build
   binary=$build_dir/bmath
 
   echo "testing: $report_dir"
-
   mkdir -p "$report_dir"
-  meson setup --wipe --buildtype=debugoptimized "$build_dir"
-  meson test -C "$build_dir"
-  meson compile -C "$build_dir"
+  pushd "$src_dir"
+  meson setup --wipe --buildtype=debugoptimized "../$build_dir"
+  meson test -C "../$build_dir"
+  meson compile -C "../$build_dir"
+  popd
 
   set -x
   perf record -o "$report_dir"/perf.data -F max --call-graph=dwarf -g --user-callchains "$binary" <test-input &>/dev/null
@@ -51,8 +53,8 @@ fi
   git reset --hard origin/master
 )
 
-perf_test $a_dir $control_dir/build
-perf_test $b_dir ./build
+perf_test $a_dir $control_dir
+perf_test $b_dir .
 
 set -x
 diff -u --color <(cat $a_dir/stat.data) <(cat $b_dir/stat.data)

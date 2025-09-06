@@ -24,7 +24,7 @@ struct symbol_tbl {
 	size_t data_size;
 };
 
-#ifdef DEBUG
+#ifdef DEBUG_SYM_TBL
 static void print_symbol_table_node(struct symbol_tbl_node *n, int child,
 				    int level)
 {

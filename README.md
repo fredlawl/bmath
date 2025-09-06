@@ -8,6 +8,19 @@ The maximum number a calculation may produce is a unsigned 64-bit integer.
 Overflow is possible if an expression calculation exceeds that number.
 This program assumes little-endian system, but big-endian input.
 
+<!--toc:start-->
+- [Bmath (Bitwise math)](#bmath-bitwise-math)
+  - [Install](#install)
+    - [Prerequisites](#prerequisites)
+      - [Linux](#linux)
+    - [Compile & Install](#compile-install)
+  - [Usage](#usage)
+    - [Configuration](#configuration)
+      - [Supported encodings](#supported-encodings)
+    - [Examples](#examples)
+  - [Syntax](#syntax)
+<!--toc:end-->
+
 ## Install
 
 ### Prerequisites
@@ -16,7 +29,8 @@ This program assumes little-endian system, but big-endian input.
 
 1. libreadline
 2. libtinfo
-3. [Install Unity](https://github.com/ThrowTheSwitch/Unity/tree/master) (tests only!)
+3. libinih
+4. [Install Unity](https://github.com/ThrowTheSwitch/Unity/tree/master) (tests only!)
 
 ### Compile & Install
 
@@ -30,8 +44,8 @@ Clone this repo, `cd` into the cloned directory, and then run the following comm
 ## Usage
 
 ```
-bmath [-a <EXPRESSION>] [-b] [-u] [--unicode] [EXPRESSION]
-bmath [-a <EXPRESSION>] [-b] [-u] [--unicode] -w <FILE> 
+bmath [-c <FILE>] [-e <ENCODINGS>] [--fmt-human] [--fmt-justify] [--fmt-uppercase] [EXPRESSION]
+bmath [-c <FILE>] [-e <ENCODINGS>] [--fmt-human] [--fmt-justify] [--fmt-uppercase] -w <FILE> 
 bmath [--help]
 bmath [--usage]
 bmath [-V]
@@ -61,53 +75,132 @@ bmath -w /path/to/file
 vim /path/to/file
 ```
 
+### Configuration
+
+Instead of only supplying command line arguments, bmath supports
+a configuration file to set your own defaults.
+
+Configuration files are searched & loaded in this order:
+
+1. `/etc/bmath/config.conf`
+2. `$XDG_CONFIG_HOME/bmath/config.conf`
+3. `$HOME/.config/bmath/config.conf`
+4. `./.bmath.conf`
+5. `--config /path/to/config`
+
+Passed command line arguments take overwrite cfg from files.
+
+#### Supported encodings
+
+```sh
+# Binary
+bmath -e "binary" 0xab
+00000000 00000000 00000000 00000000
+00000000 00000000 00000000 10101011
+ 
+# Character
+bmath -e "ascii" 0xff
+Exceeded 
+
+bmath -e "ascii" 64
+@
+
+bmath -e "ascii" 0x2
+<special>
+
+# Hex 
+bmath -e "hex" 0xab
+0xab
+ 
+bmath -e "hex16" 0xab
+0x00ab
+
+bmath -e "hex32" 0xab
+0x000000ab
+
+bmath -e "hex64" 0xab
+0x00000000000000ab
+
+# Unsigned integer
+bmath -e "uint" 0xab
+171
+
+# Signed integer
+bmath -e "int" 0xab
+-85
+
+# Unicode
+bmath -e "unicode" 0xab
+«
+
+bmath -e "utf8" 0xab
+0xc2ab
+
+bmath -e "utf16" 0xab
+0x00ab
+
+bmath -e "utf32" 0xab
+0x000000ab
+```
+
+Supplement with `--fmt-human` to make encodings more human readable:
+
+```sh
+bmath --fmt-human -e "hex16" 0xab
+Hex16: 0x00ab
+```
+
+Mix & match encoding options:
+
+```sh
+bmath -e "binary,hex,int,utf8,unicode" 0xab
+00000000 00000000 00000000 00000000
+00000000 00000000 00000000 10101011
+0xab
+-85
+0xc2ab
+«
+```
+
+Supplement with `--fmt-justify` to align results to the
+longest prefix:
+
+```sh
+bmath --fmt-justify --fmt-human -e "binary,hex,int,utf8,unicode" 0xab
+00000000 00000000 00000000 00000000
+00000000 00000000 00000000 10101011
+    Hex: 0xab
+     i8: -85
+UTF-8BE: 0xc2ab
+Unicode: «
+```
+
+`--fmt-justify` only makes sense in the context of `--fmt-human`.
+
+`binary` does not have a justify or human readable form because
+it's fairly obvious what it is, long, and takes up multiple lines.
+
+For the default format, see: [etc/bmath/config.conf](etc/bmath/config.conf)
+
 ### Examples
 
+Functions:
+
 ```sh
-bmath "1 << 6"
-  Dec: 64
- Char: @
-  Hex: 0x40
-Hex16: 0x0040
-Hex32: 0x00000040
-Hex64: 0x0000000000000040
+bmath -e "binary" "8"
+00000000 00000000 00000000 00000000
+00000000 00000000 00000000 00001000
+
+bmath -e "int" "clz(8, 1)"
+4
 ```
 
-Also supports hex conversions:
+Variables:
 
 ```sh
-bmath "0x40"
-  Dec: 64
- Char: @
-  Hex: 0x40
-Hex16: 0x0040
-Hex32: 0x00000040
-Hex64: 0x0000000000000040
-```
-
-When a value is calculated greater than unsigned 16-bit integer:
-
-```sh
-bmath "1 << 17"
-  Dec: 131072
- Char: Exceeded
-  Hex: 0x20000
-Hex16: Exceeded
-Hex32: 0x00020000
-Hex64: 0x0000000000020000
-```
-
-Variables are available:
-
-```sh
-bmath "@foo = 2 * 4; @one = 1; @one << @foo"
-   u64: 256
-   i16: 256
-  char: Exceeded
-   Hex: 0x100
- Hex16: 0x0100
- Hex32: 0x00000100
- Hex64: 0x0000000000000100
+bmath -e "binary" @shift = 8; @1 = 1; @1 << @shift"
+00000000 00000000 00000000 00000000
+00000000 00000000 00000001 00000000
 ```
 
 ## Syntax
@@ -117,11 +210,11 @@ assignment = variable, "=", expr, ";" ;
 expr = signed, op, signed
      | signed ; 
 signed = number
-       | lparen, expr, rparen
-       | { logic_not | sign }, signed
+       | "(", expr, ")"
+       | { "~" | sign }, signed
        | function
        | variable ; 
-function = ident, lparen, expr, {",", expr }, rparen ;
+function = ident, "(", expr, {",", expr }, ")" ;
 number = digit, { digit }
        | hex ;
 variable = "@", ident ;
@@ -129,9 +222,6 @@ digit = [0-9], { [0-9] } ;
 hex = "0x", [0-9a-fA-F], { [0-9a-fA-F] } ;
 ident = [_0-9a-fA-F], { [_0-9a-fA-F] } ;
 op = "|" | "^" | "&" | "<<" | ">>" | "-" | "+" | "*" | "/" | "%" ;
-lparen = "(" ;
-rparen = ")" ;
-logic_not = "~" ;
 sign = "-" | "+" ;
 
 Functions:

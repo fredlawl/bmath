@@ -4,8 +4,6 @@
 
 #include "../src/parser.h"
 
-#define DEBUG
-
 struct expr_expected_params {
 	char *expression;
 	uint64_t expected;
