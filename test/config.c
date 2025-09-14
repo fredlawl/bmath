@@ -61,6 +61,7 @@ void test_parse_encodings_list()
 				ENC_HEX64,
 				ENC_INT,
 				ENC_UINT,
+				ENC_OCTAL,
 				ENC_UNICODE,
 				ENC_UTF8,
 				ENC_UTF16,

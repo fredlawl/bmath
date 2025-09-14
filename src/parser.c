@@ -74,12 +74,12 @@ struct lexer {
 };
 
 static inline bool __is_x(char character);
-static inline bool __is_start_of_hex(char current_character, char peek);
 
 static struct lexer __init_lexer(struct parser_context *ctx, const char *line,
 				 int16_t line_length);
 static struct token __lexer_parse_number(struct lexer *lexer);
 static struct token __lexer_parse_hex(struct lexer *lexer);
+static struct token __lexer_parse_octal(struct lexer *lexer);
 static struct token __lexer_parse_ident(struct lexer *lexer);
 static struct token __lexer_get_next_token(struct lexer *lexer);
 
@@ -115,6 +115,47 @@ ssize_t str_hex_to_uint64(char *input, ssize_t input_length, uint64_t *result)
 	*result = 0;
 	while (__is_allowed_hex(*input)) {
 		*result = (*result << 4) + __hex_to_value(*input++);
+	}
+
+	bytes_parsed += input - input_start;
+	if (bytes_parsed > input_length) {
+		errno = E2BIG;
+		return -bytes_parsed;
+	}
+
+	return bytes_parsed;
+}
+
+static inline int __is_allowed_octal(char input)
+{
+	switch (input) {
+	case '0':
+	case '1':
+	case '2':
+	case '3':
+	case '4':
+	case '5':
+	case '6':
+	case '7':
+		return true;
+	default:
+		return false;
+	}
+}
+
+ssize_t str_octal_to_utin64(char *input, ssize_t input_length, uint64_t *result)
+{
+	ssize_t bytes_parsed = 0;
+	const char *input_start = input;
+
+	if (*input++ != '0') {
+		errno = EINVAL;
+		return -1;
+	}
+
+	*result = 0;
+	while (__is_allowed_octal(*input)) {
+		*result = (*result << 3) + (*input++ - '0');
 	}
 
 	bytes_parsed += input - input_start;
@@ -228,11 +269,6 @@ static inline bool __is_x(char character)
 	}
 }
 
-static inline bool __is_start_of_hex(char current_character, char peek)
-{
-	return current_character == '0' && __is_x(peek);
-}
-
 static struct lexer __init_lexer(struct parser_context *ctx, const char *line,
 				 int16_t line_length)
 {
@@ -279,6 +315,36 @@ static struct token __lexer_parse_hex(struct lexer *lexer)
 		}
 
 		__lexical_error(lexer, "Invalid hex");
+		return tok;
+	}
+
+	lexer->current_column += bytes_parsed;
+
+	tok.type = TOK_NUMBER;
+	tok.attr = result;
+	return tok;
+}
+
+// The weird thing about octal is that if just 1 digit is > 7, then we're acutally parsing a number.
+// Therefore, this either should return a number or error on invalid octal.
+static struct token __lexer_parse_octal(struct lexer *lexer)
+{
+	// (64 / 3) + (64 % 3) = 22
+	// 22 + 1 for the leading 0
+#define MAX_OCTAL_STR 22 + 1
+	uint64_t result = 0;
+	char *start = (char *)lexer->line + lexer->current_column;
+	struct token tok = *NULL_TOKEN;
+
+	ssize_t bytes_parsed =
+		str_octal_to_utin64(start, MAX_OCTAL_STR, &result);
+	if (bytes_parsed < 0) {
+		if (errno == E2BIG) {
+			__lexical_error(lexer, "Octal exceeds 12 bytes");
+			return tok;
+		}
+
+		__lexical_error(lexer, "Invalid octal");
 		return tok;
 	}
 
@@ -376,11 +442,18 @@ static struct token __lexer_get_next_token(struct lexer *lexer)
 		peek_character = *line_reader;
 
 		if (__is_digit(current_character)) {
-			if (__is_start_of_hex(current_character,
-					      peek_character)) {
-				return __lexer_parse_hex(lexer);
+			switch (current_character) {
+			case '0':
+				switch (peek_character) {
+				case 'x':
+				case 'X':
+					return __lexer_parse_hex(lexer);
+				default:
+					return __lexer_parse_octal(lexer);
+				}
+			default:
+				return __lexer_parse_number(lexer);
 			}
-			return __lexer_parse_number(lexer);
 		}
 
 		token.attr = current_character;

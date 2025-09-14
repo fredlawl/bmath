@@ -121,6 +121,9 @@ bmath -e "hex32" 0xab
 bmath -e "hex64" 0xab
 0x00000000000000ab
 
+bmath -e "octal" 0xab
+0253
+
 # Unsigned integer
 bmath -e "uint" 0xab
 171
@@ -216,10 +219,12 @@ signed = number
        | variable ; 
 function = ident, "(", expr, {",", expr }, ")" ;
 number = digit, { digit }
-       | hex ;
+       | hex 
+       | octal ;
 variable = "@", ident ;
 digit = [0-9], { [0-9] } ;
 hex = "0x", [0-9a-fA-F], { [0-9a-fA-F] } ;
+octal = "0", [0-7], { [0-7] } ;
 ident = [_0-9a-fA-F], { [_0-9a-fA-F] } ;
 op = "|" | "^" | "&" | "<<" | ">>" | "-" | "+" | "*" | "/" | "%" ;
 sign = "-" | "+" ;

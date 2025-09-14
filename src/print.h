@@ -14,6 +14,7 @@ enum encoding_t {
 	ENC_HEX64,
 	ENC_INT,
 	ENC_UINT,
+	ENC_OCTAL,
 	ENC_UNICODE,
 	ENC_UTF8,
 	ENC_UTF16,
@@ -52,6 +53,7 @@ static struct enc_name {
 			     [ENC_HEX64] = { "hex64", sizeof("hex64") - 1 },
 			     [ENC_INT] = { "int", sizeof("int") - 1 },
 			     [ENC_UINT] = { "uint", sizeof("uint") - 1 },
+			     [ENC_OCTAL] = { "oct", sizeof("oct") - 1 },
 			     [ENC_UNICODE] = { "unicode",
 					       sizeof("unicode") - 1 },
 			     [ENC_UTF8] = { "utf8", sizeof("utf8") - 1 },
@@ -77,6 +79,9 @@ ssize_t hex_str(char *dest, size_t dest_len, uint64_t number, enum bits_t bits,
 		enum format_t fmt);
 
 ssize_t int_str(char *dest, size_t dest_len, uint64_t number, bool is_unsigned,
+		enum format_t fmt);
+
+ssize_t oct_str(char *dest, size_t dest_len, uint64_t number,
 		enum format_t fmt);
 
 ssize_t unicode_str(char *dest, size_t dest_len, uint64_t number,

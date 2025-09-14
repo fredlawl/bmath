@@ -36,6 +36,7 @@ static int justify_offsets[] = {
 	[ENC_HEX64] = 6, // hex64:
 	[ENC_INT] = 4, // i16: this breaks for i8
 	[ENC_UINT] = 4, // u64:
+	[ENC_OCTAL] = 4, // oct:
 	[ENC_UNICODE] = 8, // unicode:
 	[ENC_UTF8] = 8, // utf-8be:
 	[ENC_UTF16] = 9, // utf-16be:
@@ -97,6 +98,10 @@ ssize_t print_all(FILE *stream, uint64_t num, enum encoding_t encode_order[],
 		case ENC_UINT:
 			bytes += int_str(buff + bytes, BUF_SIZE - bytes, num,
 					 enc == ENC_UINT, fmt);
+			break;
+		case ENC_OCTAL:
+			bytes += oct_str(buff + bytes, BUF_SIZE - bytes, num,
+					 fmt);
 			break;
 		case ENC_HEX:
 		case ENC_HEX16:
@@ -270,6 +275,12 @@ ssize_t int_str(char *dest, size_t dest_len, uint64_t number, bool is_unsigned,
 
 	return snprintf(dest, dest_len, "%s%" PRId64,
 			(fmt & FMT_HUMAN) ? "i64: " : "", (int64_t)number);
+}
+
+ssize_t oct_str(char *dest, size_t dest_len, uint64_t number, enum format_t fmt)
+{
+	return snprintf(dest, dest_len, "%s0%" PRIo64,
+			(fmt & FMT_HUMAN) ? "Oct: " : "", (uint64_t)number);
 }
 
 #define ICONV_ERR ((iconv_t) - 1)
