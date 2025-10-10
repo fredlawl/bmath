@@ -43,6 +43,7 @@ int main(int argc, char *argv[])
 	arguments.config_file = NULL;
 	arguments.headless = NULL;
 	arguments.watch = false;
+	arguments.no_newline = false;
 	arguments.watch_path = NULL;
 	arguments.cfg_changed = CFG_NONE;
 
@@ -65,6 +66,7 @@ int main(int argc, char *argv[])
 	ectx.err_stream = err_stream;
 	ectx.out_stream = out_stream;
 	ectx.pctx = parser_new(&settings);
+	ectx.no_newline = arguments.no_newline;
 	if (!ectx.pctx) {
 		fprintf(err_stream, "Failed to create parser context");
 		err = EINVAL;

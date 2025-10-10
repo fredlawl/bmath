@@ -121,7 +121,7 @@ ssize_t print_all(FILE *stream, uint64_t num, enum encoding_t encode_order[],
 					 utf_enc_to_bits_lookup[enc], fmt);
 			break;
 		default:
-			return EINVAL;
+			return -EINVAL;
 		}
 
 		if (bytes < 0) {

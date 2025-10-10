@@ -31,11 +31,13 @@ Comma separated list of encodings. Defaults to 'uint'. For all, use 'all'. Set t
 .It Fl -fmt-human
 Prefixes output with the type of data. See \fIbmath-config(5)\fR for more details.
 .It Fl -fmt-justify
-Align the left side of output to the first ':', if \fB--fmt-human\fR is set. See \fIbmath-config(5)\fR for more details.
+Align the left side of output to the longest prefix up to ':', if \fB--fmt-human\fR is set. See \fIbmath-config(5)\fR for more details.
 .It Fl -fmt-uppercase
 Uppercase hex output. See \fIbmath-config(5)\fR for more details.
 .It Fl -help
 Prints help information.
+.It Fl n, Fl -no-newline
+Removes trailing newline on every printed result, except when an error occurs.
 .It Fl -usage
 Prints usage message.
 .It Fl V, Fl -version

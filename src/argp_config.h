@@ -32,6 +32,7 @@ struct arguments {
 	char *headless;
 	char *watch_path;
 	bool watch;
+	bool no_newline;
 	struct config *cfg;
 	uint64_t cfg_changed;
 };
@@ -39,6 +40,7 @@ struct arguments {
 enum argument_opts {
 	OPT_CONFIG = 'c',
 	OPT_ENCODINGS = 'e',
+	OPT_NO_NEWLINE = 'n',
 	OPT_FMT_HUMAN = 128,
 	OPT_FMT_JUSTIFY = 129,
 	OPT_FMT_UPPERCASE = 130,
@@ -55,10 +57,13 @@ static struct argp_option options[] = {
 	  "Prefixes output with the type of data. See bmath-config(5) for details",
 	  0 },
 	{ "fmt-justify", OPT_FMT_JUSTIFY, 0, 0,
-	  "Align the left side of output to the first ':', if --fmt-human is set. See bmath-config(5) for details",
+	  "Align the left side of output to the longest prefix up to ':', if --fmt-human is set. See bmath-config(5) for details",
 	  0 },
 	{ "fmt-uppercase", OPT_FMT_UPPERCASE, 0, 0,
 	  "Uppercase hex output. See bmath-config(5) for details", 0 },
+	{ "no-newline", OPT_NO_NEWLINE, 0, OPTION_NO_USAGE,
+	  "Removes trailing newline on every printed result, except when an error occurs",
+	  0 },
 	{ "watch", OPT_WATCH, 0, OPTION_NO_USAGE,
 	  "Watches file for changes. ie. Live reloading. When enabled, stdin capabilities are disabled, and requires a file path to input file as first program argument",
 	  0 },
@@ -97,6 +102,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 	case OPT_FMT_UPPERCASE:
 		arguments->cfg->enc_fmt |= FMT_UPPERCASE;
 		arguments->cfg_changed |= CFG_FMT_UPPERCASE;
+		break;
+	case OPT_NO_NEWLINE:
+		arguments->no_newline = true;
 		break;
 	case OPT_WATCH:
 		arguments->watch = true;

@@ -102,7 +102,14 @@ int evaluate(struct execution_ctx *ectx, const char *expr, size_t len)
 			      ectx->cfg->encoding_order_len, ectx->cfg->enc_fmt,
 			      ectx->cfg->output_fmt);
 
-	if (bytes_out > 0) {
+	if (bytes_out < 0) {
+		fputs("Unable to write output\n", ectx->err_stream);
+		return PE_PARSE_ERROR;
+	}
+
+	if (ectx->no_newline) {
+		fputc('\0', ectx->out_stream);
+	} else {
 		fputc('\n', ectx->out_stream);
 	}
 

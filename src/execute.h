@@ -14,10 +14,11 @@ struct parse_expression {
 struct execution_ctx {
 	struct parser_context *pctx;
 	struct config *cfg;
-	bool print_expr;
 	FILE *out_stream;
 	FILE *err_stream;
 	int count;
+	bool print_expr;
+	bool no_newline;
 };
 
 void execution_free(struct execution_ctx *ectx);
