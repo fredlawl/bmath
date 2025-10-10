@@ -135,7 +135,7 @@ static size_t longest_prefix_match(struct symbol_tbl *tbl,
 	size_t prefixlen = 0, i = 0;
 	size_t limit = MIN(node->prefixlen, key_prefixlen);
 
-	if (tbl->data_size >= i + 8) {
+	while (tbl->data_size >= i + 8) {
 		uint64_t diff = be64toh(*(uint64_t *)&node->key[i] ^
 					*(uint64_t *)&key[i]);
 		prefixlen += 64 - fls64(diff);
@@ -150,7 +150,7 @@ static size_t longest_prefix_match(struct symbol_tbl *tbl,
 		i += 8;
 	}
 
-	while (tbl->data_size >= i + 4) {
+	if (tbl->data_size >= i + 4) {
 		uint32_t diff = be32toh(*(uint32_t *)&node->key[i] ^
 					*(uint32_t *)&key[i]);
 		prefixlen += 32 - fls(diff);

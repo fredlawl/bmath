@@ -851,7 +851,6 @@ static uint64_t expr_assignment(struct lexer *lexer)
 
 	memcpy(symbol_value(sym), (void *)&ret, sizeof(ret));
 
-	// this allows multiline assignments
 	if (lexer->lookahead_token.type == TOK_NULL) {
 		return ret;
 	}

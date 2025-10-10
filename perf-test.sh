@@ -23,7 +23,7 @@ function perf_test() {
 
   set -x
   perf record -o "$report_dir"/perf.data -F max --call-graph=dwarf -g --user-callchains "$binary" <test-input &>/dev/null
-  perf stat -r 100 -o "$report_dir"/stat.data -- "$binary" <test-input &>/dev/null
+  perf stat -o "$report_dir"/stat.data -- "$binary" <test-input &>/dev/null
   perf script --input "$report_dir"/perf.data >"$report_dir"/out.perf
   ./FlameGraph/stackcollapse-perf.pl "$report_dir"/out.perf >"$report_dir"/perf.folded
   ./FlameGraph/flamegraph.pl "$report_dir"/perf.folded >"$report_dir"/flamegraph.svg
@@ -50,7 +50,7 @@ fi
 # Ensure clean master
 (
   cd $control_dir
-  git reset --hard origin/master
+  git fetch origin && git reset --hard origin/master
 )
 
 perf_test $a_dir $control_dir

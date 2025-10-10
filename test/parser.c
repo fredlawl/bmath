@@ -262,10 +262,12 @@ void test_variables()
 		{ "@", 0, PE_PARSE_ERROR },
 		{ "myvar = 10;", 0, PE_PARSE_ERROR },
 		{ "@myvar = 20", 0, PE_PARSE_ERROR },
-		// ^^^^^^^^^^^^^^^^^^^^ despite resulting in parse error, the symbol table isn't reset
 		{ "@my#var = 30;", 0, PE_PARSE_ERROR },
 		{ "@asuperlongvariablenamethatshouldntbelong = 30;", 0,
 		  PE_PARSE_ERROR },
+		{ "@multione = @multitwo = 2;", 2, PE_PARSE_ERROR },
+		{ "@multione_two = @multitwo_two = 2; @multione_two * @multitwo_two",
+		  4, PE_PARSE_ERROR },
 		{ "@unknown", 0, 0 },
 		{ "@myvar = 40;", 40, 0 },
 		{ "@my_var = 40;", 40, 0 },
