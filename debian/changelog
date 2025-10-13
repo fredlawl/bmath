@@ -1,3 +1,14 @@
+bmath (4.0.0) unstable; urgency=medium
+
+  * Variable support
+  * Functions
+  * Octal encoding
+  * Configuration
+  * Integer division
+  * File watch mode
+
+ -- Frederick Lawler <me@fred.software>  Mon, 13 Oct 2025 17:35:45 -0500
+
 bmath (3.0.0) unstable; urgency=medium
 
   * Remove -d,--detatched argument. Optional positional argument is enough
