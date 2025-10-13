@@ -28,19 +28,19 @@ static enum bits_t utf_enc_to_bits_lookup[] = {
 };
 
 static int justify_offsets[] = {
-	[ENC_ASCII] = 6, // ascii:
+	[ENC_ASCII] = sizeof("ascii:") - 1,
 	[ENC_BINARY] = 0,
-	[ENC_HEX] = 4, // hex:
-	[ENC_HEX16] = 6, // hex16:
-	[ENC_HEX32] = 6, // hex32:
-	[ENC_HEX64] = 6, // hex64:
-	[ENC_INT] = 4, // i16: this breaks for i8
-	[ENC_UINT] = 4, // u64:
-	[ENC_OCTAL] = 4, // oct:
-	[ENC_UNICODE] = 8, // unicode:
-	[ENC_UTF8] = 8, // utf-8be:
-	[ENC_UTF16] = 9, // utf-16be:
-	[ENC_UTF32] = 9 // utf-32be:
+	[ENC_HEX] = sizeof("hex:") - 1,
+	[ENC_HEX16] = sizeof("hex16:") - 1,
+	[ENC_HEX32] = sizeof("hex32:") - 1,
+	[ENC_HEX64] = sizeof("hex64:") - 1,
+	[ENC_INT] = sizeof("i16:") - 1, // this breaks for i8
+	[ENC_UINT] = sizeof("u64:") - 1,
+	[ENC_OCTAL] = sizeof("oct:") - 1,
+	[ENC_UNICODE] = sizeof("unicode:") - 1,
+	[ENC_UTF8] = sizeof("utf-8be:") - 1,
+	[ENC_UTF16] = sizeof("utf-16be:") - 1,
+	[ENC_UTF32] = sizeof("utf-32be:") - 1
 };
 
 ssize_t print_all(FILE *stream, uint64_t num, enum encoding_t encode_order[],
