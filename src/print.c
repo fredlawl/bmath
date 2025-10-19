@@ -221,6 +221,13 @@ ssize_t hex_str(char *dest, size_t dest_len, uint64_t number, enum bits_t bits,
 	int zeros = 2;
 
 	switch (bits) {
+	case BITS_8:
+		prefix = (fmt & FMT_HUMAN) ? "Hex8: " : "";
+		if (number > UINT8_MAX) {
+			return snprintf(dest, dest_len, "%sExceeded", prefix);
+		}
+		zeros *= 1;
+		break;
 	case BITS_16:
 		prefix = (fmt & FMT_HUMAN) ? "Hex16: " : "";
 		if (number > UINT16_MAX) {
@@ -241,10 +248,11 @@ ssize_t hex_str(char *dest, size_t dest_len, uint64_t number, enum bits_t bits,
 		break;
 	default:
 		prefix = (fmt & FMT_HUMAN) ? "Hex: " : "";
+		zeros *= 0;
 		break;
 	}
 
-	if (zeros == 2) {
+	if (!zeros) {
 		return snprintf(dest, dest_len, sfmt, prefix, number);
 	}
 
@@ -371,6 +379,11 @@ ssize_t utf_str(char *dest, size_t dest_len, uint64_t number, enum bits_t bits,
 	size_t output_size = sizeof(output);
 	const char *hex_fmt = (fmt & FMT_UPPERCASE) ? "%02" PRIX64 :
 						      "%02" PRIx64;
+
+	// Set the defualt to UTF8, even though this could result in more bits in output
+	if (bits == BITS_MINIMAL) {
+		bits = BITS_8;
+	}
 
 	prefix = (fmt & FMT_HUMAN) ? prefix_match[bits] : "";
 
