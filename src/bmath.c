@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include "config.h"
@@ -22,6 +23,31 @@ const char *argp_program_version = VERSION;
 #endif
 
 static char *watch_file = NULL;
+
+static void bmath_info(FILE *stream)
+{
+	char *cfg_path = NULL;
+	struct stat cfg_stat;
+	char *stack[CFG_OVERRIDE] = { 0 };
+	int stack_cnt = 1;
+
+	while ((cfg_path = locate_next_config_file(NULL))) {
+		int err = stat(cfg_path, &cfg_stat);
+		if (err) {
+			free(cfg_path);
+			continue;
+		}
+
+		stack[stack_cnt++] = cfg_path;
+	}
+
+	fprintf(stream, "version %s\nconfig %s\n", VERSION,
+		stack[stack_cnt - 1]);
+
+	for (int i = 0; i < stack_cnt; i++) {
+		free(stack[i]);
+	}
+}
 
 int main(int argc, char *argv[])
 {
@@ -46,6 +72,7 @@ int main(int argc, char *argv[])
 	arguments.no_newline = false;
 	arguments.watch_path = NULL;
 	arguments.cfg_changed = CFG_NONE;
+	arguments.info = false;
 
 	// Create baseline cfg in case args overwrite
 	arguments.cfg = config_new();
@@ -56,6 +83,12 @@ int main(int argc, char *argv[])
 	}
 
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
+
+	if (arguments.info) {
+		bmath_info(stdout);
+		err = 0;
+		goto err;
+	}
 
 	watch_file = arguments.watch_path;
 

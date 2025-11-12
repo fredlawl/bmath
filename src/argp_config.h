@@ -12,7 +12,7 @@
 
 const char *argp_program_bug_address = "Frederick Lawler <me@fred.software>";
 
-static char args_doc[] = "[EXPR]\n-w FILE";
+static char args_doc[] = "\n[EXPR]\n-w FILE";
 
 static char doc[] = "\nUsage examples:"
 		    "\n\t./bmath \"0x001\""
@@ -31,6 +31,7 @@ struct arguments {
 	char *config_file;
 	char *headless;
 	char *watch_path;
+	bool info;
 	bool watch;
 	bool no_newline;
 	struct config *cfg;
@@ -44,6 +45,7 @@ enum argument_opts {
 	OPT_FMT_HUMAN = 128,
 	OPT_FMT_JUSTIFY = 129,
 	OPT_FMT_UPPERCASE = 130,
+	OPT_INFO = 131,
 	OPT_WATCH = 'w',
 };
 
@@ -61,6 +63,9 @@ static struct argp_option options[] = {
 	  0 },
 	{ "fmt-uppercase", OPT_FMT_UPPERCASE, 0, 0,
 	  "Uppercase hex output. See bmath-config(5) for details", 0 },
+	{ "info", OPT_INFO, 0, 0,
+	  "Prints information about the current bmath instance. Ignores --config.",
+	  0 },
 	{ "no-newline", OPT_NO_NEWLINE, 0, OPTION_NO_USAGE,
 	  "Removes trailing newline on every printed result, except when an error occurs",
 	  0 },
@@ -102,6 +107,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 	case OPT_FMT_UPPERCASE:
 		arguments->cfg->enc_fmt |= FMT_UPPERCASE;
 		arguments->cfg_changed |= CFG_FMT_UPPERCASE;
+		break;
+	case OPT_INFO:
+		arguments->info = true;
 		break;
 	case OPT_NO_NEWLINE:
 		arguments->no_newline = true;

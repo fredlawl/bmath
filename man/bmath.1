@@ -14,6 +14,8 @@
 .Nm
 .Op Fl -help
 .Nm
+.Op Fl -info
+.Nm
 .Op Fl -usage
 .Nm
 .Op Fl V
@@ -36,6 +38,8 @@ Align the left side of output to the longest prefix up to ':', if \fB--fmt-human
 Uppercase hex output. See \fIbmath-config(5)\fR for more details.
 .It Fl -help
 Prints help information.
+.It Fl -info
+Prints information about the current bmath instance. Ignores \fB--config\fR.
 .It Fl n, Fl -no-newline
 Removes trailing newline on every printed result, except when an error occurs.
 .It Fl -usage

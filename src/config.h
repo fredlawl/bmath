@@ -6,6 +6,15 @@
 
 #include "print.h"
 
+enum cfg_file {
+	CFG_NONE = 0,
+	CFG_GLOBAL,
+	CFG_XDG,
+	CFG_HOME,
+	CFG_RELATIVE,
+	CFG_OVERRIDE
+};
+
 struct config {
 	enum encoding_t *encoding_order;
 	size_t encoding_order_len;

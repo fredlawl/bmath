@@ -11,7 +11,7 @@
 #include "config.h"
 #include "print.h"
 
-static int next_cfg_state = -1;
+static enum cfg_file next_cfg = CFG_NONE;
 
 char *locate_next_config_file(const char *override)
 {
@@ -19,11 +19,11 @@ char *locate_next_config_file(const char *override)
 	char *env;
 	char *env_path;
 
-	next_cfg_state++;
-	switch (next_cfg_state) {
-	case 0:
+	next_cfg++;
+	switch (next_cfg) {
+	case CFG_GLOBAL:
 		return strdup("/etc/bmath/config.conf");
-	case 1:
+	case CFG_XDG:
 		env = secure_getenv("XDG_CONFIG_HOME");
 		if (!env) {
 			return locate_next_config_file(override);
@@ -37,7 +37,7 @@ char *locate_next_config_file(const char *override)
 
 		snprintf(env_path, bytes + 1, "%s/bmath/config.conf", env);
 		return env_path;
-	case 2:
+	case CFG_HOME:
 		env = secure_getenv("HOME");
 		if (!env) {
 			return locate_next_config_file(override);
@@ -52,9 +52,9 @@ char *locate_next_config_file(const char *override)
 		snprintf(env_path, bytes + 1, "%s/.config/bmath/config.conf",
 			 env);
 		return env_path;
-	case 3:
+	case CFG_RELATIVE:
 		return strdup("./.bmath.conf");
-	case 4:
+	case CFG_OVERRIDE:
 		if (!override) {
 			return locate_next_config_file(override);
 		}
@@ -63,7 +63,7 @@ char *locate_next_config_file(const char *override)
 		break;
 	}
 
-	next_cfg_state = -1;
+	next_cfg = CFG_NONE;
 	return NULL;
 }
 
