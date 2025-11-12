@@ -4,5 +4,5 @@ export PATH=/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin
 #export DEB_BUILD_OPTIONS=nocheck
 
 %:
-	dh $@ --buildsystem=meson
+	dh $@ --buildsystem=meson --with=mime
 

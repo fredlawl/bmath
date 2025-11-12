@@ -110,4 +110,6 @@ executable(
 install_man('man/bmath.1')
 install_man('man/bmath-config.5')
 install_data('etc/bmath/config.conf', install_dir: '/etc/bmath')
+install_data('usr/share/mime/packages/x-bmath.xml', install_dir: '/usr/share/mime/packages')
+meson.add_install_script('update-mime-database', '/usr/share/mime')
 install_headers('src/print.h', 'src/parser.h', subdir: 'bmath')

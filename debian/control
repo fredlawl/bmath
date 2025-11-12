@@ -11,7 +11,7 @@ Description: 64bit big-endian bitwise operation calculator
 Package: bmath
 Priority: optional
 Architecture: amd64
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, shared-mime-info
 Homepage: https://github.com/fredlawl/bmath
 Description: 64bit big-endian bitwise operation calculator
  A simple tool.
