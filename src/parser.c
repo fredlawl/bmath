@@ -1,182 +1,49 @@
-#include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "conversions.h"
-#include "parser.h"
-#include "util.h"
-#include "lookup_tables.h"
-#include "token.h"
-#include "functions.h"
-#include "symbol.h"
 #include <sys/types.h>
 
-static struct token *NULL_TOKEN =
-	&(struct token){ .type = TOK_NULL, .attr = ATTR_NULL };
-
-static struct named_function {
-	const char *name;
-	size_t namelen;
-	bmath_func_t func;
-} PREDEFINED_FUNCTIONS[] = {
-	{ "align", sizeof("algin") - 1, align },
-	{ "align_down", sizeof("align_down") - 1, align_down },
-	{ "bswap", sizeof("bswap") - 1, bswap },
-	{ "clz", sizeof("clz") - 1, clz },
-	{ "ctz", sizeof("ctz") - 1, ctz },
-	{ "mask", sizeof("mask") - 1, mask },
-	{ "popcnt", sizeof("popcnt") - 1, popcnt },
-};
-
-static inline struct symbol *named_func_to_sym(struct named_function *nfunc)
-{
-	uintptr_t value = (uintptr_t)nfunc->func;
-	return symbol_new(nfunc->name, nfunc->namelen, SYMBOL_FUNCTION, 0,
-			  &value, sizeof(value));
-}
+#include "functions.h"
+#include "lexer.h"
+#include "parser.h"
+#include "token.h"
+#include "symbol.h"
 
 struct parser_context {
 	int max_parse_len;
-	bool liberror;
 	FILE *err_stream;
 	struct symbol_tbl *tbl;
-};
-
-#define __general_error(l, fmt, arg...)                           \
-	do {                                                      \
-		fprintf((l)->err_stream, "[ERROR]: " fmt, ##arg); \
-		(l)->ctx->liberror = true;                        \
-	} while (0)
-
-#define __lexical_error(l, fmt, arg...)                                                 \
-	do {                                                                            \
-		if ((l)->ctx->liberror)                                                 \
-			break;                                                          \
-		fprintf((l)->err_stream,                                                \
-			"[PARSE ERROR]: There was an error parsing the expression:\n"); \
-		fprintf((l)->err_stream, "%s\n", (l)->line);                            \
-		__repeat_character((l)->err_stream, (l)->current_column, '~');          \
-		fprintf((l)->err_stream, "%c " fmt "\n", '^', ##arg);                   \
-		(l)->ctx->liberror = true;                                              \
-	} while (0)
-
-struct lexer {
-	const char *line;
-	struct parser_context *ctx;
-	uint16_t current_column;
-	int16_t line_length;
-	FILE *err_stream;
+	struct lexer *lexer;
 	struct token lookahead_token;
 };
 
-static inline bool __is_x(char character);
+static void __expect(struct parser_context *pctx, enum token_type expected);
 
-static struct lexer __init_lexer(struct parser_context *ctx, const char *line,
-				 int16_t line_length);
-static struct token __lexer_parse_number(struct lexer *lexer);
-static struct token __lexer_parse_hex(struct lexer *lexer);
-static struct token __lexer_parse_octal(struct lexer *lexer);
-static struct token __lexer_parse_ident(struct lexer *lexer);
-static struct token __lexer_get_next_token(struct lexer *lexer);
+static uint64_t expr_number(struct parser_context *pctx);
+static uint64_t expr_function(struct parser_context *pctx);
+static uint64_t expr_signed(struct parser_context *pctx);
+static uint64_t expr_factor(struct parser_context *pctx);
+static uint64_t expr_add(struct parser_context *pctx);
+static uint64_t expr_shift(struct parser_context *pctx);
+static uint64_t expr_and(struct parser_context *pctx);
+static uint64_t expr_xor(struct parser_context *pctx);
+static uint64_t expr_or(struct parser_context *pctx);
+static uint64_t expr_assignment(struct parser_context *pctx);
+static uint64_t expr(struct parser_context *pctx);
 
-static void __expect(struct lexer *lexer, enum token_type expected);
-
-static uint64_t expr_number(struct lexer *lexer);
-static uint64_t expr_function(struct lexer *lexer);
-static uint64_t expr_signed(struct lexer *lexer);
-static uint64_t expr_factor(struct lexer *lexer);
-static uint64_t expr_add(struct lexer *lexer);
-static uint64_t expr_shift(struct lexer *lexer);
-static uint64_t expr_and(struct lexer *lexer);
-static uint64_t expr_xor(struct lexer *lexer);
-static uint64_t expr_or(struct lexer *lexer);
-//static uint64_t expr_assignment(struct lexer *lexer);
-static uint64_t expr(struct lexer *lexer);
-
-ssize_t str_hex_to_uint64(char *input, ssize_t input_length, uint64_t *result)
+static uint64_t __perform_parse(struct parser_context *pctx)
 {
-	ssize_t bytes_parsed = 0;
-	const char *input_start = input;
-
-	if (*input++ != '0') {
-		errno = EINVAL;
-		return -1;
-	}
-
-	if (!__is_x(*input++)) {
-		errno = EINVAL;
-		return -2;
-	}
-
-	*result = 0;
-	while (__is_allowed_hex(*input)) {
-		*result = (*result << 4) + __hex_to_value(*input++);
-	}
-
-	bytes_parsed += input - input_start;
-	if (bytes_parsed > input_length) {
-		errno = E2BIG;
-		return -bytes_parsed;
-	}
-
-	return bytes_parsed;
-}
-
-static inline int __is_allowed_octal(char input)
-{
-	switch (input) {
-	case '0':
-	case '1':
-	case '2':
-	case '3':
-	case '4':
-	case '5':
-	case '6':
-	case '7':
-		return true;
-	default:
-		return false;
-	}
-}
-
-ssize_t str_octal_to_utin64(char *input, ssize_t input_length, uint64_t *result)
-{
-	ssize_t bytes_parsed = 0;
-	const char *input_start = input;
-
-	if (*input++ != '0') {
-		errno = EINVAL;
-		return -1;
-	}
-
-	*result = 0;
-	while (__is_allowed_octal(*input)) {
-		*result = (*result << 3) + (*input++ - '0');
-	}
-
-	bytes_parsed += input - input_start;
-	if (bytes_parsed > input_length) {
-		errno = E2BIG;
-		return -bytes_parsed;
-	}
-
-	return bytes_parsed;
-}
-
-static uint64_t __perform_parse(struct lexer *lexer)
-{
-	lexer->lookahead_token = __lexer_get_next_token(lexer);
-	return expr(lexer);
+	pctx->lookahead_token = lexer_next_token(pctx->lexer);
+	return expr(pctx);
 }
 
 struct parser_context *parser_new(struct parser_settings *settings)
 {
+	struct lexer_settings lexer_settings = { 0 };
 	struct symbol_table_attr tbl_attr;
-	int err;
 	struct parser_context *ctx = malloc(sizeof(*ctx));
 	if (!ctx) {
 		return NULL;
@@ -189,26 +56,17 @@ struct parser_context *parser_new(struct parser_settings *settings)
 		goto out_err;
 	}
 
-	ctx->liberror = false;
 	ctx->max_parse_len = settings->max_parse_len;
 	ctx->err_stream = stderr;
 	if (settings->err_stream) {
 		ctx->err_stream = settings->err_stream;
 	}
 
-	for (size_t i = 0;
-	     i < sizeof(PREDEFINED_FUNCTIONS) / sizeof(PREDEFINED_FUNCTIONS[0]);
-	     i++) {
-		struct symbol *sym =
-			named_func_to_sym(&PREDEFINED_FUNCTIONS[i]);
-		if (!sym) {
-			goto out_err;
-		}
-
-		err = symbol_table_update(ctx->tbl, sym);
-		if (err) {
-			goto out_err;
-		}
+	lexer_settings.tbl = ctx->tbl;
+	lexer_settings.err_stream = ctx->err_stream;
+	ctx->lexer = lexer_new(&lexer_settings);
+	if (!ctx->lexer) {
+		goto out_err;
 	}
 
 	return ctx;
@@ -224,6 +82,7 @@ int parser_free(struct parser_context *ctx)
 		return 0;
 	}
 
+	lexer_free(ctx->lexer);
 	symbol_table_free(ctx->tbl);
 	free(ctx);
 	return 0;
@@ -232,7 +91,6 @@ int parser_free(struct parser_context *ctx)
 int parse(struct parser_context *ctx, const char *infix_expression, size_t len,
 	  uint64_t *out_result)
 {
-	struct lexer lexer;
 	uint64_t result;
 
 	*out_result = 0;
@@ -243,13 +101,10 @@ int parse(struct parser_context *ctx, const char *infix_expression, size_t len,
 	if (len > (size_t)ctx->max_parse_len)
 		return PE_EXPRESSION_TOO_LONG;
 
-	lexer = __init_lexer(ctx, infix_expression, (int16_t)len);
-	lexer.err_stream = ctx->err_stream;
+	lexer_init(ctx->lexer, infix_expression, (int16_t)len);
+	result = __perform_parse(ctx);
 
-	result = __perform_parse(&lexer);
-
-	if (ctx->liberror) {
-		ctx->liberror = false;
+	if (lexer_in_error(ctx->lexer)) {
 		return PE_PARSE_ERROR;
 	}
 
@@ -258,325 +113,44 @@ int parse(struct parser_context *ctx, const char *infix_expression, size_t len,
 	return 0;
 }
 
-static inline bool __is_x(char character)
+static void __expect(struct parser_context *pctx, enum token_type expected)
 {
-	switch (character) {
-	case 'x':
-	case 'X':
-		return true;
-	default:
-		return false;
-	}
-}
-
-static struct lexer __init_lexer(struct parser_context *ctx, const char *line,
-				 int16_t line_length)
-{
-	struct lexer lexer;
-
-	lexer.line = line;
-	lexer.current_column = 0;
-	lexer.line_length = line_length;
-	lexer.ctx = ctx;
-
-	return lexer;
-}
-
-static struct token __lexer_parse_number(struct lexer *lexer)
-{
-	uint64_t result = 0;
-	char *line_reader = (char *)lexer->line + lexer->current_column;
-	struct token tok = *NULL_TOKEN;
-
-	while (__is_digit(*line_reader)) {
-		result = result * 10 + (*line_reader++ - '0');
-	}
-
-	lexer->current_column = line_reader - lexer->line;
-
-	tok.attr = result;
-	tok.type = TOK_NUMBER;
-	return tok;
-}
-
-static struct token __lexer_parse_hex(struct lexer *lexer)
-{
-	// 8 bytes for 64bit number + 0x
-#define MAX_HEX_STR 16 + 2
-	uint64_t result = 0;
-	char *start = (char *)lexer->line + lexer->current_column;
-	struct token tok = *NULL_TOKEN;
-
-	ssize_t bytes_parsed = str_hex_to_uint64(start, MAX_HEX_STR, &result);
-	if (bytes_parsed < 0) {
-		if (errno == E2BIG) {
-			__lexical_error(lexer, "Hex exceeds 8 bytes");
-			return tok;
-		}
-
-		__lexical_error(lexer, "Invalid hex");
-		return tok;
-	}
-
-	lexer->current_column += bytes_parsed;
-
-	tok.type = TOK_NUMBER;
-	tok.attr = result;
-	return tok;
-}
-
-// The weird thing about octal is that if just 1 digit is > 7, then we're acutally parsing a number.
-// Therefore, this either should return a number or error on invalid octal.
-static struct token __lexer_parse_octal(struct lexer *lexer)
-{
-	// (64 / 3) + (64 % 3) = 22
-	// 22 + 1 for the leading 0
-#define MAX_OCTAL_STR 22 + 1
-	uint64_t result = 0;
-	char *start = (char *)lexer->line + lexer->current_column;
-	struct token tok = *NULL_TOKEN;
-
-	ssize_t bytes_parsed =
-		str_octal_to_utin64(start, MAX_OCTAL_STR, &result);
-	if (bytes_parsed < 0) {
-		if (errno == E2BIG) {
-			__lexical_error(lexer, "Octal exceeds 12 bytes");
-			return tok;
-		}
-
-		__lexical_error(lexer, "Invalid octal");
-		return tok;
-	}
-
-	lexer->current_column += bytes_parsed;
-
-	tok.type = TOK_NUMBER;
-	tok.attr = result;
-	return tok;
-}
-
-static struct token __lexer_parse_ident(struct lexer *lexer)
-{
-	char *line_reader = (char *)lexer->line + lexer->current_column;
-	char *start = line_reader;
-	struct symbol *sym = NULL;
-	size_t ident_len;
-	bool variable = false;
-	int err;
-	char *ident;
-	uint64_t variable_value = 0;
-
-	// account for variable definitions
-	if (*line_reader == '@') {
-		variable = true;
-		line_reader++;
-	}
-
-	while (__is_allowed_identifier(*line_reader++))
-		;
-
-	// lop off last character
-	line_reader--;
-
-	ident_len = line_reader - start;
-	ident = line_reader - ident_len;
-	lexer->current_column += ident_len;
-
-	// just a $
-	if ((!ident_len || !(ident_len - 1)) && variable) {
-		__lexical_error(lexer, "Identifier is empty");
-		return *NULL_TOKEN;
-	} else if (!ident_len) {
-		return *NULL_TOKEN;
-	} else if (ident_len > 32) {
-		__lexical_error(lexer,
-				"Identifer too long. Max %d characters got %d",
-				32, (int)ident_len);
-		return *NULL_TOKEN;
-	}
-
-	sym = symbol_table_lookup(lexer->ctx->tbl, ident, ident_len);
-	// lookup can be greedy, so ensure that we match exactly
-	// TODO: Fixup lookup to avoid this final comparison
-	if (sym && sym->ident_len == ident_len &&
-	    !strncmp(symbol_ident(sym), ident, ident_len)) {
-		return symbol_to_token(sym);
-	}
-
-	if (!variable) {
-		return *NULL_TOKEN;
-	}
-
-	sym = symbol_new(ident, ident_len, SYMBOL_VARIABLE, 0,
-			 (void *)&variable_value, sizeof(variable_value));
-	if (!sym) {
-		__lexical_error(lexer, "No memory to allocate symbol");
-		return *NULL_TOKEN;
-	}
-
-	err = symbol_table_update(lexer->ctx->tbl, sym);
-	if (err) {
-		symbol_free(sym);
-		__lexical_error(lexer,
-				"Unable to store identifier into lookup table");
-		return *NULL_TOKEN;
-	}
-
-	return symbol_to_token(sym);
-}
-
-static struct token __lexer_get_next_token(struct lexer *lexer)
-{
-	char *line_reader = (char *)lexer->line + lexer->current_column;
-	struct token token = *NULL_TOKEN;
-	char current_character;
-	char peek_character;
-
-	// We're already at or past the null character. Perform early return
-	// to prevent snooping at memory past the bounds of the array.
-	if (lexer->current_column > lexer->line_length - 1) {
-		return token;
-	}
-
-	while ((current_character = *line_reader++)) {
-		peek_character = *line_reader;
-
-		if (__is_digit(current_character)) {
-			switch (current_character) {
-			case '0':
-				switch (peek_character) {
-				case 'x':
-				case 'X':
-					return __lexer_parse_hex(lexer);
-				default:
-					return __lexer_parse_octal(lexer);
-				}
-			default:
-				return __lexer_parse_number(lexer);
-			}
-		}
-
-		token.attr = current_character;
-		switch (current_character) {
-		case '\t':
-		case '\n':
-		case '\r':
-		case ' ':
-			lexer->current_column += 1;
-			continue;
-		case '%':
-			token.type = TOK_FACTOR_OP;
-			goto out;
-		case '/':
-			token.type = TOK_FACTOR_OP;
-			goto out;
-		case '&':
-			token.type = TOK_OP;
-			goto out;
-		case '(':
-			token.type = TOK_LPAREN;
-			goto out;
-		case ')':
-			token.type = TOK_RPAREN;
-			goto out;
-		case '*':
-			token.type = TOK_FACTOR_OP;
-			goto out;
-		case '+':
-			token.type = TOK_SIGN;
-			goto out;
-		case ',':
-			token.type = TOK_COMMA;
-			goto out;
-		case '-':
-			token.type = TOK_SIGN;
-			goto out;
-		case ';':
-			token.type = TOK_TERMINATOR;
-			goto out;
-		case '<':
-			if (peek_character == '<') {
-				token.type = TOK_SHIFT_OP;
-				token.attr = ATTR_LSHIFT;
-				lexer->current_column += 1;
-				goto out;
-			}
-			break;
-		case '=':
-			token.type = TOK_ASSIGNMENT;
-			goto out;
-		case '>':
-			if (peek_character == '>') {
-				token.type = TOK_SHIFT_OP;
-				token.attr = ATTR_RSHIFT;
-				lexer->current_column += 1;
-				goto out;
-			}
-			break;
-		case '^':
-			token.type = TOK_OP;
-			goto out;
-		case '|':
-			token.type = TOK_OP;
-			goto out;
-		case '~':
-			token.type = TOK_BITWISE_NOT;
-			goto out;
-		default:
-			break;
-		}
-
-		token = __lexer_parse_ident(lexer);
-		if (token.type != TOK_NULL) {
-			return token;
-		}
-
-		__lexical_error(lexer, "Illegal character");
-		break;
-	}
-
-out:
-	lexer->current_column += 1;
-	return token;
-}
-
-static void __expect(struct lexer *lex, enum token_type expected)
-{
-	if (lex->lookahead_token.type == expected) {
-		lex->lookahead_token = __lexer_get_next_token(lex);
+	if (pctx->lookahead_token.type == expected) {
+		pctx->lookahead_token = lexer_next_token(pctx->lexer);
 		return;
 	}
 
-	if (!lex->ctx->liberror) {
-		__lexical_error(lex, "Expecting a %s, but got %s instead.",
-				token_name(expected),
-				token_name(lex->lookahead_token.type));
+	if (!lexer_in_error(pctx->lexer)) {
+		lexer_lexical_error(pctx->lexer,
+				    "Expecting a %s, but got %s instead.",
+				    token_name(expected),
+				    token_name(pctx->lookahead_token.type));
 	}
 }
 
-static uint64_t expr_number(struct lexer *lexer)
+static uint64_t expr_number(struct parser_context *pctx)
 {
 	uint64_t ret;
 
-	if (lexer->lookahead_token.type == TOK_LPAREN) {
-		__expect(lexer, TOK_LPAREN);
-		ret = expr(lexer);
-		__expect(lexer, TOK_RPAREN);
+	if (pctx->lookahead_token.type == TOK_LPAREN) {
+		__expect(pctx, TOK_LPAREN);
+		ret = expr(pctx);
+		__expect(pctx, TOK_RPAREN);
 		return ret;
 	}
 
-	if (lexer->lookahead_token.type == TOK_IDENT) {
+	if (pctx->lookahead_token.type == TOK_IDENT) {
 		ret = *(uint64_t *)symbol_value(
-			(struct symbol *)lexer->lookahead_token.attr);
-		__expect(lexer, TOK_IDENT);
+			(struct symbol *)pctx->lookahead_token.attr);
+		__expect(pctx, TOK_IDENT);
 	} else {
-		ret = lexer->lookahead_token.attr;
-		__expect(lexer, TOK_NUMBER);
+		ret = pctx->lookahead_token.attr;
+		__expect(pctx, TOK_NUMBER);
 	}
 	return ret;
 }
 
-static uint64_t expr_function(struct lexer *lexer)
+static uint64_t expr_function(struct parser_context *pctx)
 {
 	int err = 0;
 	static uint64_t ops[FUNCTIONS_MAX_OPS] = { 0 };
@@ -586,47 +160,48 @@ static uint64_t expr_function(struct lexer *lexer)
 	bmath_func_t func;
 	struct token tok;
 
-	if (lexer->lookahead_token.type != TOK_IDENT) {
-		return expr_number(lexer);
+	if (pctx->lookahead_token.type != TOK_IDENT) {
+		return expr_number(pctx);
 	}
 
 	memset(ops, 0, sizeof(ops));
 
-	tok = lexer->lookahead_token;
+	tok = pctx->lookahead_token;
 	sym = (struct symbol *)tok.attr;
 	if (sym->type != SYMBOL_FUNCTION) {
-		return expr_number(lexer);
+		return expr_number(pctx);
 	}
 
 	func = (bmath_func_t) * (uintptr_t *)symbol_value(sym);
 
-	__expect(lexer, TOK_IDENT);
-	__expect(lexer, TOK_LPAREN);
+	__expect(pctx, TOK_IDENT);
+	__expect(pctx, TOK_LPAREN);
 	for (i = 0; i < sizeof(ops) / sizeof(ops[0]); i++) {
-		if (lexer->lookahead_token.type == TOK_RPAREN) {
+		if (pctx->lookahead_token.type == TOK_RPAREN) {
 			--i;
 			break;
 		}
 
-		ops[i] = expr(lexer);
-		if (lexer->lookahead_token.type != TOK_COMMA) {
+		ops[i] = expr(pctx);
+		if (pctx->lookahead_token.type != TOK_COMMA) {
 			break;
 		}
-		__expect(lexer, TOK_COMMA);
+		__expect(pctx, TOK_COMMA);
 	}
-	__expect(lexer, TOK_RPAREN);
+	__expect(pctx, TOK_RPAREN);
 
 	err = func(&ret, i + 1, ops);
 	if (err) {
-		__lexical_error(lexer, "%s() returned error code: %d %s",
-				symbol_ident(sym), err, str_func_err(err));
+		lexer_lexical_error(pctx->lexer,
+				    "%s() returned error code: %d %s",
+				    symbol_ident(sym), err, str_func_err(err));
 		return ret;
 	}
 
 	return ret;
 }
 
-static uint64_t expr_signed(struct lexer *lexer)
+static uint64_t expr_signed(struct parser_context *pctx)
 {
 #define MAX_STACK 10
 	static struct token stack[MAX_STACK] = { 0 };
@@ -637,7 +212,7 @@ static uint64_t expr_signed(struct lexer *lexer)
 	int in_loop = 0;
 
 	while (1) {
-		tok = lexer->lookahead_token;
+		tok = pctx->lookahead_token;
 		switch (tok.type) {
 		case TOK_BITWISE_NOT:
 		case TOK_SIGN:
@@ -647,16 +222,17 @@ static uint64_t expr_signed(struct lexer *lexer)
 			}
 			i++;
 			if (i >= MAX_STACK) {
-				__lexical_error(
-					lexer, "Exceeded max stack depth of %d",
+				lexer_lexical_error(
+					pctx->lexer,
+					"Exceeded max stack depth of %d",
 					MAX_STACK);
 				return 0;
 			}
 			stack[i] = tok;
-			__expect(lexer, lexer->lookahead_token.type);
+			__expect(pctx, pctx->lookahead_token.type);
 			break;
 		default:
-			ret = expr_function(lexer);
+			ret = expr_function(pctx);
 			goto next;
 		}
 	}
@@ -680,61 +256,64 @@ next:
 	return ret;
 }
 
-static uint64_t expr_factor(struct lexer *lexer)
+static uint64_t expr_factor(struct parser_context *pctx)
 {
 	uint64_t left, right;
 	struct token tok;
 
-	left = expr_signed(lexer);
+	left = expr_signed(pctx);
 	while (true) {
-		if (lexer->lookahead_token.type != TOK_FACTOR_OP) {
+		if (pctx->lookahead_token.type != TOK_FACTOR_OP) {
 			break;
 		}
 
-		tok = lexer->lookahead_token;
-		__expect(lexer, lexer->lookahead_token.type);
-		right = expr_signed(lexer);
+		tok = pctx->lookahead_token;
+		__expect(pctx, pctx->lookahead_token.type);
+		right = expr_signed(pctx);
 		switch (tok.attr) {
 		case '*':
 			left *= right;
 			break;
 		case '/':
 			if (right == 0) {
-				__lexical_error(lexer, "Division by zero");
+				lexer_lexical_error(pctx->lexer,
+						    "Division by zero");
 				return left;
 			}
 			left /= right;
 			break;
 		case '%':
 			if (right == 0) {
-				__lexical_error(lexer, "Division by zero");
+				lexer_lexical_error(pctx->lexer,
+						    "Division by zero");
 				return left;
 			}
 			left %= right;
 			break;
 		default:
-			__general_error(lexer,
-					"Something went wrong parsing term.\n");
+			lexer_general_error(
+				pctx->lexer,
+				"Something went wrong parsing term.\n");
 		}
 	}
 
 	return left;
 }
 
-static uint64_t expr_add(struct lexer *lexer)
+static uint64_t expr_add(struct parser_context *pctx)
 {
 	uint64_t left, right;
 	struct token tok;
 
-	left = expr_factor(lexer);
+	left = expr_factor(pctx);
 	while (true) {
-		if (lexer->lookahead_token.type != TOK_SIGN) {
+		if (pctx->lookahead_token.type != TOK_SIGN) {
 			break;
 		}
 
-		tok = lexer->lookahead_token;
-		__expect(lexer, lexer->lookahead_token.type);
-		right = expr_factor(lexer);
+		tok = pctx->lookahead_token;
+		__expect(pctx, pctx->lookahead_token.type);
+		right = expr_factor(pctx);
 		switch (tok.attr) {
 		case '+':
 			left += right;
@@ -743,28 +322,29 @@ static uint64_t expr_add(struct lexer *lexer)
 			left -= right;
 			break;
 		default:
-			__general_error(lexer,
-					"Something went wrong parsing term.\n");
+			lexer_general_error(
+				pctx->lexer,
+				"Something went wrong parsing term.\n");
 		}
 	}
 
 	return left;
 }
 
-static uint64_t expr_shift(struct lexer *lexer)
+static uint64_t expr_shift(struct parser_context *pctx)
 {
 	uint64_t left, right;
 	struct token tok;
 
-	left = expr_add(lexer);
+	left = expr_add(pctx);
 	while (true) {
-		if (lexer->lookahead_token.type != TOK_SHIFT_OP) {
+		if (pctx->lookahead_token.type != TOK_SHIFT_OP) {
 			break;
 		}
 
-		tok = lexer->lookahead_token;
-		__expect(lexer, lexer->lookahead_token.type);
-		right = expr_add(lexer);
+		tok = pctx->lookahead_token;
+		__expect(pctx, pctx->lookahead_token.type);
+		right = expr_add(pctx);
 		switch (tok.attr) {
 		case ATTR_LSHIFT:
 			left <<= right;
@@ -773,65 +353,66 @@ static uint64_t expr_shift(struct lexer *lexer)
 			left >>= right;
 			break;
 		default:
-			__general_error(lexer,
-					"Something went wrong parsing term.\n");
+			lexer_general_error(
+				pctx->lexer,
+				"Something went wrong parsing term.\n");
 		}
 	}
 	return left;
 }
 
-static uint64_t expr_and(struct lexer *lexer)
+static uint64_t expr_and(struct parser_context *pctx)
 {
 	uint64_t left;
 
-	left = expr_shift(lexer);
-	if (lexer->lookahead_token.attr != '&')
+	left = expr_shift(pctx);
+	if (pctx->lookahead_token.attr != '&')
 		return left;
 
-	__expect(lexer, TOK_OP);
-	return left & expr_and(lexer);
+	__expect(pctx, TOK_OP);
+	return left & expr_and(pctx);
 }
 
-static uint64_t expr_xor(struct lexer *lexer)
+static uint64_t expr_xor(struct parser_context *pctx)
 {
 	uint64_t left;
 
-	left = expr_and(lexer);
-	if (lexer->lookahead_token.attr != '^')
+	left = expr_and(pctx);
+	if (pctx->lookahead_token.attr != '^')
 		return left;
 
-	__expect(lexer, TOK_OP);
-	return left ^ expr_xor(lexer);
+	__expect(pctx, TOK_OP);
+	return left ^ expr_xor(pctx);
 }
 
-static uint64_t expr_or(struct lexer *lexer)
+static uint64_t expr_or(struct parser_context *pctx)
 {
 	uint64_t left;
 
-	left = expr_xor(lexer);
-	if (lexer->lookahead_token.attr != '|')
+	left = expr_xor(pctx);
+	if (pctx->lookahead_token.attr != '|')
 		return left;
 
-	__expect(lexer, TOK_OP);
-	return left | expr_or(lexer);
+	__expect(pctx, TOK_OP);
+	return left | expr_or(pctx);
 }
 
-static uint64_t expr_assignment(struct lexer *lexer)
+static uint64_t expr_assignment(struct parser_context *pctx)
 {
 	uint64_t ret;
 	struct token ident;
 	struct symbol *sym;
 
-	ident = lexer->lookahead_token;
-	ret = expr_or(lexer);
+	ident = pctx->lookahead_token;
+	ret = expr_or(pctx);
 
 	if (ident.type != TOK_IDENT) {
 		return ret;
 	}
 
 	if (!ident.attr) {
-		__general_error(
-			lexer,
+		lexer_general_error(
+			pctx->lexer,
 			"Token doesn't have a symbol. This should not happen");
 		return 0;
 	}
@@ -841,24 +422,24 @@ static uint64_t expr_assignment(struct lexer *lexer)
 		return ret;
 	}
 
-	if (lexer->lookahead_token.type != TOK_ASSIGNMENT) {
+	if (pctx->lookahead_token.type != TOK_ASSIGNMENT) {
 		return ret;
 	}
 
-	__expect(lexer, TOK_ASSIGNMENT);
-	ret = expr(lexer);
-	__expect(lexer, TOK_TERMINATOR);
+	__expect(pctx, TOK_ASSIGNMENT);
+	ret = expr(pctx);
+	__expect(pctx, TOK_TERMINATOR);
 
 	memcpy(symbol_value(sym), (void *)&ret, sizeof(ret));
 
-	if (lexer->lookahead_token.type == TOK_NULL) {
+	if (pctx->lookahead_token.type == TOK_NULL) {
 		return ret;
 	}
 
-	return expr(lexer);
+	return expr(pctx);
 }
 
-static uint64_t expr(struct lexer *lexer)
+static uint64_t expr(struct parser_context *pctx)
 {
-	return expr_assignment(lexer);
+	return expr_assignment(pctx);
 }

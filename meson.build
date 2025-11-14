@@ -39,6 +39,7 @@ libbmath_deps = [dependency('iconv')]
 libbmath_inc = include_directories('src')
 libbmath = shared_library(
   'bmath',
+  'src/lexer.c',
   'src/parser.c',
   'src/print.c',
   'src/symbol.c',
@@ -112,4 +113,12 @@ install_man('man/bmath-config.5')
 install_data('etc/bmath/config.conf', install_dir: '/etc/bmath')
 install_data('usr/share/mime/packages/x-bmath.xml', install_dir: '/usr/share/mime/packages')
 meson.add_install_script('update-mime-database', '/usr/share/mime')
-install_headers('src/print.h', 'src/parser.h', subdir: 'bmath')
+
+install_headers(
+  'libbmath/src/lexer.h',
+  'libbmath/src/parser.h',
+  'libbmath/src/print.h',
+  'libbmath/src/symbol.h',
+  'libbmath/src/token.h',
+  subdir: 'bmath',
+)
