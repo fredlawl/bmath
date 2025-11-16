@@ -2,7 +2,7 @@
 #include <string.h>
 #include <unity/unity.h>
 
-#include "../src/parser.h"
+#include "libbmath/src/parser.h"
 
 struct expr_expected_params {
 	char *expression;

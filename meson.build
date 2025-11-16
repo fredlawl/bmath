@@ -29,21 +29,21 @@ if get_option('buildtype') == 'release'
 endif
 
 configure_file(
-  input: 'src/version.h.in',
+  input: 'bmath/version.h.in',
   output: 'version.h',
   configuration: {'version': meson.project_version()},
 )
 
 # Release
 libbmath_deps = [dependency('iconv')]
-libbmath_inc = include_directories('src')
+libbmath_inc = include_directories('libbmath/src')
 libbmath = shared_library(
   'bmath',
-  'src/lexer.c',
-  'src/parser.c',
-  'src/print.c',
-  'src/symbol.c',
-  'src/functions.c',
+  'libbmath/src/lexer.c',
+  'libbmath/src/parser.c',
+  'libbmath/src/print.c',
+  'libbmath/src/symbol.c',
+  'libbmath/src/functions.c',
   include_directories: libbmath_inc,
   dependencies: libbmath_deps,
   install: true,
@@ -61,6 +61,7 @@ if unity_dep.found()
     'bmath_parser_test',
     'test/parser.c',
     install: false,
+    include_directories: libbmath_inc,
     dependencies: [unity_dep, libbmath_dep],
   )
 
@@ -68,6 +69,7 @@ if unity_dep.found()
     'bmath_functions_test',
     'test/functions.c',
     install: false,
+    include_directories: libbmath_inc,
     dependencies: [unity_dep, libbmath_dep],
   )
 
@@ -75,14 +77,16 @@ if unity_dep.found()
     'bmath_conversions_test',
     'test/conversions.c',
     install: false,
+    include_directories: libbmath_inc,
     dependencies: [unity_dep, libbmath_dep],
   )
 
   config_test = executable(
     'bmath_config_test',
-    'src/config.c',
+    'bmath/src/config.c',
     'test/config.c',
     install: false,
+    include_directories: libbmath_inc,
     dependencies: [unity_dep, libini_dep],
   )
 
@@ -100,10 +104,11 @@ bmath_deps = [
 ]
 executable(
   'bmath',
-  'src/config.c',
-  'src/execute.c',
-  'src/bmath.c',
+  'bmath/src/config.c',
+  'bmath/src/execute.c',
+  'bmath/src/cmd.c',
   dependencies: bmath_deps,
+  include_directories: libbmath_inc,
   install: true,
   pie: true,
 )
@@ -111,7 +116,10 @@ executable(
 install_man('man/bmath.1')
 install_man('man/bmath-config.5')
 install_data('etc/bmath/config.conf', install_dir: '/etc/bmath')
-install_data('usr/share/mime/packages/x-bmath.xml', install_dir: '/usr/share/mime/packages')
+install_data(
+  'usr/share/mime/packages/x-bmath.xml',
+  install_dir: '/usr/share/mime/packages',
+)
 meson.add_install_script('update-mime-database', '/usr/share/mime')
 
 install_headers(

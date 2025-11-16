@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <unity/unity.h>
 
-#include "../src/functions.h"
+#include "libbmath/src/functions.h"
 
 struct func_params {
 	const char *name;

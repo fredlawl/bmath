@@ -16,10 +16,10 @@
 #include <readline/readline.h>
 
 #include "config.h"
-#include "parser.h"
-#include "print.h"
-#include "util.h"
 #include "execute.h"
+#include "libbmath/src/print.h"
+#include "parser.h"
+#include "util.h"
 
 static void _perror(FILE *stream, const char *fmt, ...)
 {

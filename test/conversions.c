@@ -2,7 +2,7 @@
 #include <string.h>
 #include <unity/unity.h>
 
-#include "../src/conversions.h"
+#include "libbmath/src/conversions.h"
 
 void setUp()
 {

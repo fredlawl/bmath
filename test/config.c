@@ -5,8 +5,8 @@
 #include <sys/types.h>
 #include <unity/unity.h>
 
-#include "../src/print.h"
-#include "../src/config.h"
+#include "libbmath/src/print.h"
+#include "../bmath/src/config.h"
 
 void setUp(void)
 {

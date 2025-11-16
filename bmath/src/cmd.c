@@ -11,11 +11,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "config.h"
 #include "argp_config.h"
+#include "config.h"
+#include "libbmath/src/print.h"
 #include "parser.h"
 #include "execute.h"
-#include "print.h"
 
 #ifndef VERSION
 #include "version.h"

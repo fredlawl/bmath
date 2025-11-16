@@ -228,8 +228,6 @@ dbg
 *.deb
 build
 .cache
-bmath
-bmath_test
 output
 FlameGraph
 gdb.txt

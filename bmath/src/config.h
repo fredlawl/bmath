@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
-#include "print.h"
+#include "libbmath/src/print.h"
 
 enum cfg_file {
 	CFG_NONE = 0,

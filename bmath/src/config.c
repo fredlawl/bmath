@@ -9,7 +9,7 @@
 #include <string.h>
 
 #include "config.h"
-#include "print.h"
+#include "libbmath/src/print.h"
 
 static enum cfg_file next_cfg = CFG_NONE;
 
