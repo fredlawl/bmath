@@ -17,6 +17,7 @@
 
 #include "config.h"
 #include "execute.h"
+#include "libbmath/src/type.h"
 #include "libbmath/src/print.h"
 #include "parser.h"
 #include "util.h"
@@ -51,7 +52,7 @@ void execution_free(struct execution_ctx *ectx)
 }
 
 static int _eval(struct execution_ctx *ectx,
-		 const struct parse_expression *expr, uint64_t *out)
+		 const struct parse_expression *expr, bmath_result_t *out)
 {
 	int err;
 
@@ -80,12 +81,12 @@ static int _eval(struct execution_ctx *ectx,
 int evaluate(struct execution_ctx *ectx, const char *expr, size_t len)
 {
 	int err;
+	bmath_result_t ret;
 	uint64_t output = 0;
 	ssize_t bytes_out;
 
-	err = _eval(ectx, &(struct parse_expression){ expr, len }, &output);
+	err = _eval(ectx, &(struct parse_expression){ expr, len }, &ret);
 	if (err) {
-		flush_streams(ectx);
 		return err;
 	}
 
@@ -97,6 +98,7 @@ int evaluate(struct execution_ctx *ectx, const char *expr, size_t len)
 		}
 	}
 
+	output = bmath_result_t__to_uint64_t(ret);
 	bytes_out = print_all(ectx->out_stream, output,
 			      ectx->cfg->encoding_order,
 			      ectx->cfg->encoding_order_len, ectx->cfg->enc_fmt,
@@ -114,8 +116,6 @@ int evaluate(struct execution_ctx *ectx, const char *expr, size_t len)
 	}
 
 	ectx->count++;
-
-	flush_streams(ectx);
 	return err;
 }
 
@@ -154,6 +154,9 @@ static int read_file(struct execution_ctx *ectx, int fd)
 	ssize_t expr_index = 0;
 	char expr[P_MAX_EXP_LEN] = { 0 };
 
+	// TODO: This is an implicit default here, need to reconsider with cfg option
+	ectx->print_expr = true;
+
 	do {
 		char read_buff[BUF_SIZE] = { 0 };
 		ssize_t buff_index = 0;
@@ -181,12 +184,12 @@ static int read_file(struct execution_ctx *ectx, int fd)
 			}
 
 			if (read_buff[buff_index] == '\n') {
-				ectx->print_expr = true;
 				// ignore error handling for evaluate to keep program running
 				evaluate(ectx, expr, expr_index);
 				memset(expr, '\0', expr_index);
 				expr_index = 0;
 				buff_index++;
+				flush_streams(ectx);
 				continue;
 			}
 
@@ -204,6 +207,29 @@ int do_stdin(struct execution_ctx *ectx)
 {
 	int err;
 	err = read_file(ectx, STDIN_FILENO);
+	if (err) {
+		execution_free(ectx);
+		return EXIT_FAILURE;
+	}
+
+	execution_free(ectx);
+	return EXIT_SUCCESS;
+}
+
+int do_read_file(struct execution_ctx *ectx, const char *file_path)
+{
+	int err;
+	int fd;
+
+	fd = open(file_path, O_CLOEXEC, O_RDONLY);
+	if (fd < 0) {
+		_perror(ectx->err_stream, "Unable to open file \"%s\"",
+			file_path);
+		execution_free(ectx);
+		return errno;
+	}
+
+	err = read_file(ectx, fd);
 	if (err) {
 		execution_free(ectx);
 		return EXIT_FAILURE;

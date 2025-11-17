@@ -4,21 +4,22 @@
 #include <stdint.h>
 #include <unity/unity.h>
 
+#include "libbmath/src/type.h"
 #include "libbmath/src/functions.h"
 
 struct func_params {
 	const char *name;
-	uint64_t expected;
+	bmath_result_t expected;
 	enum func_err err;
 	int argc;
-	uint64_t argv[FUNCTIONS_MAX_OPS];
+	bmath_result_t argv[FUNCTIONS_MAX_OPS];
 };
 
 static void check(struct func_params *param, bmath_func_t func)
 {
 	char call_msg[256];
 	char out_msg[256];
-	uint64_t out_value = 0;
+	bmath_result_t out_value = 0;
 	enum func_err ret;
 
 	sprintf(call_msg, "%s: ret is expected", param->name);

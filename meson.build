@@ -52,39 +52,107 @@ libbmath = shared_library(
 )
 libbmath_dep = declare_dependency(link_with: libbmath, include_directories: libbmath_inc)
 
+go_make = find_program('make')
+go_server_src_dir = meson.project_source_root() / 'bmath-server'
+go_build_bin_dir = meson.current_build_dir()
+go_cgo_cflags = '-I' + (meson.project_source_root() / 'libbmath/src')
+go_cgo_ldflags = '-L' + meson.current_build_dir() + ' -Wl,-rpath,' + meson.current_build_dir()
+
+compile_bmath_ls = custom_target(
+  'bmath-ls',
+  output: 'bmath-ls',
+  command: [
+    go_make,
+    '-C', go_server_src_dir,
+    (go_build_bin_dir / 'bmath-ls'),
+    'TARGET=' + (go_build_bin_dir / 'bmath-ls'),
+    'CGO_CFLAGS=' + go_cgo_cflags,
+    'CGO_LDFLAGS=' + go_cgo_ldflags,
+    'GOCACHE=' + (go_build_bin_dir / '.go-cache'),
+  ],
+  depends: [libbmath],
+  build_by_default: true,
+  build_always_stale: true,
+  capture: false,
+  install: true,
+  install_dir: get_option('bindir'),
+)
+
+custom_target(
+  'bmath-format',
+  output: 'bmath-format',
+  command: [
+    go_make,
+    '-C', go_server_src_dir,
+    (go_build_bin_dir / 'bmath-format'),
+    'FMT_TARGET=' + (go_build_bin_dir / 'bmath-format'),
+    'CGO_CFLAGS=' + go_cgo_cflags,
+    'CGO_LDFLAGS=' + go_cgo_ldflags,
+    'GOCACHE=' + (go_build_bin_dir / '.go-cache'),
+  ],
+  depends: [libbmath],
+  build_by_default: true,
+  build_always_stale: true,
+  capture: false,
+  install: true,
+  install_dir: get_option('bindir'),
+)
+
+test(
+  'bmath-server',
+  go_make,
+  args: [
+    '-C', go_server_src_dir,
+    'test',
+    'CGO_ENABLED=1',
+    'CGO_CFLAGS=' + go_cgo_cflags,
+    'CGO_LDFLAGS=' + go_cgo_ldflags,
+  ],
+  depends: [libbmath],
+  verbose: true,
+)
+
 libini_dep = dependency('inih')
 
 # Test
 unity_dep = dependency('unity', static: true, required: false)
 if unity_dep.found()
+  lexer_test = executable(
+    'libbmath_test_lexer',
+    'libbmath/test/lexer.c',
+    install: false,
+    include_directories: libbmath_inc,
+    dependencies: [unity_dep, libbmath_dep],
+  )
+
   parser_test = executable(
-    'bmath_parser_test',
-    'test/parser.c',
+    'libbmath_test_parser',
+    'libbmath/test/parser.c',
     install: false,
     include_directories: libbmath_inc,
     dependencies: [unity_dep, libbmath_dep],
   )
 
   functions_test = executable(
-    'bmath_functions_test',
-    'test/functions.c',
+    'libbmath_test_functions',
+    'libbmath/test/functions.c',
     install: false,
     include_directories: libbmath_inc,
     dependencies: [unity_dep, libbmath_dep],
   )
 
   conversions_test = executable(
-    'bmath_conversions_test',
-    'test/conversions.c',
+    'libbmath_test_conversions',
+    'libbmath/test/conversions.c',
     install: false,
     include_directories: libbmath_inc,
     dependencies: [unity_dep, libbmath_dep],
   )
 
   config_test = executable(
-    'bmath_config_test',
+    'bmath_test_config',
     'bmath/src/config.c',
-    'test/config.c',
+    'bmath/test/config.c',
     install: false,
     include_directories: libbmath_inc,
     dependencies: [unity_dep, libini_dep],
@@ -94,6 +162,7 @@ if unity_dep.found()
   test('functions', functions_test, args: [], verbose: true)
   test('conversions', conversions_test, args: [], verbose: true)
   test('config', config_test, args: [], verbose: true)
+  test('lexer', lexer_test, args: [], verbose: true)
 endif
 
 # todo: figure out argp dep for non-gnu platforms
@@ -102,7 +171,7 @@ bmath_deps = [
   libini_dep,
   libbmath_dep,
 ]
-executable(
+bmath = executable(
   'bmath',
   'bmath/src/config.c',
   'bmath/src/execute.c',
@@ -111,6 +180,20 @@ executable(
   include_directories: libbmath_inc,
   install: true,
   pie: true,
+)
+
+custom_target(
+  'cscope',
+  output: ['cscope.out', 'cscope.files'],
+  command: [
+    './scripts/cscope.sh',
+    '@CURRENT_SOURCE_DIR@',
+  ],
+  depends: [bmath],
+  build_by_default: true,
+  build_always_stale: true,
+  capture: false,
+  install: false,
 )
 
 install_man('man/bmath.1')
@@ -128,5 +211,6 @@ install_headers(
   'libbmath/src/print.h',
   'libbmath/src/symbol.h',
   'libbmath/src/token.h',
+  'libbmath/src/type.h',
   subdir: 'bmath',
 )

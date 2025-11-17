@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdio.h>
 
+#include "type.h"
+
 /*
  * Parse error codes
  */
@@ -31,4 +33,4 @@ int parser_free(struct parser_context *ctx);
  *         or negative value corresponds with a error code
  */
 int parse(struct parser_context *ctx, const char *infix_expression, size_t len,
-	  uint64_t *out_result);
+	  bmath_result_t *out_result);

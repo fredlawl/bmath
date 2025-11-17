@@ -1,0 +1,38 @@
+{
+  "name": "bmath",
+  "displayName": "Bmath",
+  "version": "0.0.1",
+  "publisher": "fredlawl",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:bmath",
+    "workspaceContains:*.bmath"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "bmath",
+        "aliases": [
+          "Bmath"
+        ],
+        "extensions": [
+          ".bmath"
+        ]
+      }
+    ]
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "scripts": {
+    "compile": "tsc -p ."
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.9",
+    "@types/vscode": "^1.108.1",
+    "typescript": "^5.3.3"
+  }
+}

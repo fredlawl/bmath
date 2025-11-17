@@ -14,7 +14,7 @@
 #include "argp_config.h"
 #include "config.h"
 #include "libbmath/src/print.h"
-#include "parser.h"
+#include "libbmath/src/parser.h"
 #include "execute.h"
 
 #ifndef VERSION
@@ -59,12 +59,27 @@ int main(int argc, char *argv[])
 	struct execution_ctx ectx = { 0 };
 	char stdout_buff[4096] = { 0 };
 	char *cfg_path = NULL;
+	struct stat headless_stat;
 
 	err_stream = stderr;
 	out_stream = stdout;
 
 	setvbuf(out_stream, stdout_buff, _IOFBF, sizeof(stdout_buff));
 	setlocale(LC_CTYPE, "en_US.UTF-8");
+
+	// TODO: At some point handle the argument splitting case for:
+	//
+	//   #!/usr/local/bin/bmath -e all --fmt-human --fmt-justify
+	//
+	//   without doing
+	//
+	//   #!/usr/bin/env -S /usr/local/bin/bmath -e all --fmt-human --fmt-justify
+	//
+	//   For now users will need to use the later approach if they want more than one
+	//   optional argument.
+	//
+	//for (int j = 0; j < argc; j++)
+	//	fprintf(stderr, "argv[%u]: %s\n", j, argv[j]);
 
 	arguments.config_file = NULL;
 	arguments.headless = NULL;
@@ -177,6 +192,12 @@ int main(int argc, char *argv[])
 	}
 
 	if (arguments.headless) {
+		// if a file path is passed as first argument, read it
+		err = stat(arguments.headless, &headless_stat);
+		if (!err) {
+			return do_read_file(&ectx, arguments.headless);
+		}
+
 		err = evaluate(&ectx, arguments.headless,
 			       strlen(arguments.headless));
 		goto err;

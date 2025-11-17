@@ -1,17 +1,21 @@
+#include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
 #include <unity/unity.h>
 
-#include "libbmath/src/parser.h"
+#include "../libbmath/src/parser.h"
+#include "../libbmath/src/type.h"
 
 struct expr_expected_params {
 	char *expression;
-	uint64_t expected;
+	bmath_result_t expected;
 };
 
 struct expr_expected_err_params {
 	char *expression;
-	uint64_t expected;
+	bmath_result_t expected;
 	int err;
 };
 
@@ -22,18 +26,23 @@ static void check(const struct expr_expected_err_params *param)
 {
 	char ret_msg[256];
 	char out_msg[256];
-	uint64_t actual = 0;
+	bmath_result_t actual = 0;
 	size_t exprlen = strlen(param->expression);
 	int ret = parse(pctx, param->expression, exprlen, &actual);
 
 	sprintf(ret_msg, "ret is expected for \"%s\"", param->expression);
-	sprintf(out_msg, "out is expected for \"%s\"", param->expression);
+	size_t b = sprintf(out_msg, "out is expected for \"%s\"",
+			   param->expression);
 
 	TEST_ASSERT_EQUAL_MESSAGE(param->err, ret, ret_msg);
 
 	if (param->err) {
 		return;
 	}
+
+	//fprintf(stderr, "%lx\n", actual);
+	sprintf(out_msg + b, "; hex=%lx ehex=%lx", actual, param->expected);
+	//TEST_MESSAGE(out_msg);
 
 	TEST_ASSERT_EQUAL_MESSAGE(param->expected, actual, out_msg);
 }
@@ -97,8 +106,12 @@ void test_factors()
 {
 	struct expr_expected_err_params params[] = {
 		// parsing hex assumes 0 results by default, this was because of optmizations
-		{ "0x", 0, 0 },	 { "(1)", 1, 0 },    { "1", 1, 0 },
-		{ "0x1", 1, 0 }, { "(0xa)", 10, 0 }, { "~(0)", ~0, 0 },
+		{ "0x", 0, PE_PARSE_ERROR },
+		{ "(1)", 1, 0 },
+		{ "1", 1, 0 },
+		{ "0x1", 1, 0 },
+		{ "(0xa)", 10, 0 },
+		{ "~(0)", ~0, 0 },
 	};
 
 	for (size_t i = 0; i < sizeof(params) / sizeof(params[0]); i++) {
@@ -189,6 +202,8 @@ void test_order_of_operations()
 		{ "1 | 2 | 3 | 4", 1 | 2 | 3 | 4 },
 		{ "1 ^ 2 ^ 3 ^ 4", 1 ^ 2 ^ 3 ^ 4 },
 		{ "1 + 2 + 3 + 4", 1 + 2 + 3 + 4 },
+		{ "2 - 2", 2 - 2 },
+		{ "2 - 2 + 4", 2 - 2 + 4 },
 		{ "1 - 2 - 3 - 4", 1 - 2 - 3 - 4 },
 		{ "1 * 2 * 3 * 4", 1 * 2 * 3 * 4 },
 		{ "1 % 2 % 3 % 4", 1 % 2 % 3 % 4 },
@@ -268,7 +283,7 @@ void test_variables()
 		{ "@multione = @multitwo = 2;", 2, PE_PARSE_ERROR },
 		{ "@multione_two = @multitwo_two = 2; @multione_two * @multitwo_two",
 		  4, PE_PARSE_ERROR },
-		{ "@unknown", 0, 0 },
+		{ "@unknown", 0, PE_PARSE_ERROR },
 		{ "@myvar = 40;", 40, 0 },
 		{ "@my_var = 40;", 40, 0 },
 		{ "@number1 = 40; @number1", 40, 0 },
@@ -283,6 +298,7 @@ void test_variables()
 		{ "@myvar = 3; 1 << @myvar", 8, 0 },
 		{ "@one = 1; @two = 2; @one", 1, 0 },
 		{ "@one = 1; @two = 2; @two", 2, 0 },
+		// tests longest prefix match
 		{ "@one1 = 1; @one2 = 2; @one1", 1, 0 },
 		{ "@one1 = 1; @one2 = 2; @one2", 2, 0 },
 		{ "@ok = 1; << 3", 0, PE_PARSE_ERROR },

@@ -1,0 +1,21 @@
+Content-Length: 35
+
+{"id": "1", "method": "initialize"}
+Content-Length: 25
+
+{"method": "initialized"}
+Content-Length: 34
+
+{"id": "1", "method": "test/ping"}
+Content-Length: 31
+
+{"method": "test/notification"}
+Content-Length: 22
+
+{"method": "test/bad"}
+Content-Length: 31
+
+{"id": 2, "method": "test/bad"}
+Content-Length: 34
+
+{"id": "4", "method": "test/ping"}

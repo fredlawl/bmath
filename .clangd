@@ -1,3 +1,4 @@
 # .clangd
 CompileFlags:
   Add: [-std=gnu11]
+  CompilationDatabase: build/

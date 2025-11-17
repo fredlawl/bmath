@@ -25,5 +25,6 @@ void execution_free(struct execution_ctx *ectx);
 int evaluate(struct execution_ctx *ectx, const char *expr, size_t len);
 int do_readline(struct execution_ctx *ectx);
 int do_stdin(struct execution_ctx *ectx);
+int do_read_file(struct execution_ctx *ectx, const char *file_path);
 int do_watch(struct execution_ctx *ectx, const char *watch_file_path);
 void flush_streams(struct execution_ctx *ectx);

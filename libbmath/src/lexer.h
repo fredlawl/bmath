@@ -1,20 +1,17 @@
 #pragma once
+#include <stddef.h>
 #include <stdint.h>
 
-#include "symbol.h"
 #include "token.h"
 
 struct lexer;
-struct lexer_settings {
-	struct symbol_tbl *tbl;
-	FILE *err_stream;
-};
+struct lexer_settings {};
 
-void lexer_init(struct lexer *lexer, const char *line, int16_t line_length);
-void lexer_reset(struct lexer *lexer);
+void lexer_init(struct lexer *lexer, const char *text, size_t text_len);
 struct lexer *lexer_new(const struct lexer_settings *settings);
 void lexer_free(struct lexer *lexer);
-void lexer_general_error(struct lexer *lexer, char *fmt, ...);
-void lexer_lexical_error(struct lexer *lexer, char *fmt, ...);
-bool lexer_in_error(struct lexer *lexer);
+int lexer_errno(const struct lexer *lexer);
+const char *lexer_error_str(const struct lexer *lexer);
 struct token lexer_next_token(struct lexer *lexer);
+const char *lexer_token_ident(const struct lexer *lexer,
+			      const struct token *token);

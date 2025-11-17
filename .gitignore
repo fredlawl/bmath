@@ -49,7 +49,6 @@ CMakeCache.txt
 CMakeFiles
 CMakeScripts
 Testing
-Makefile
 cmake_install.cmake
 install_manifest.txt
 compile_commands.json
@@ -234,3 +233,12 @@ gdb.txt
 a_perf_test
 b_perf_test
 .bmath_master
+__pycache__
+*.log
+debian/bmath
+debian/.debhelper
+cscope.*
+*.mprof
+*.prof
+*.conf
+!etc/bmath/config.conf

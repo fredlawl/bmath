@@ -1,0 +1,33 @@
+@test = 230;
+@five = 5;
+@five = 6;
+@test + 0x40 - 0777
+popcnt((3 << 5) >> 1)
+bswap(@test)
+@five
+
+//comment1 // nested
+// multiline
+# also a comment
+mask(8)   // comment 3
+ctz(//@test)
+clz(@five, 0x4)
+align(4, 2)
+align(4, 2)
+align(4, 2)
+
+// Need to address the bug where the hint isn't showing up for second param
+align(mask(4), 2)
+
+a//lign(1)
+1.9
+2#5
+0xggabbbadsfadsfadfasf
+09999
+0777777777777777777777777
+ali()
+@ok
+0xaaaaaaaaaaaaaaaaaaaaaaa
+@
+
+hahaha

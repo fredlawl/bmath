@@ -6,9 +6,10 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "token.h"
-
 enum symbol_type { SYMBOL_NONE = 0, SYMBOL_FUNCTION, SYMBOL_VARIABLE };
+
+#define SYM_FLAG_NONE 0
+#define SYM_FLAG_DEFINED (1 << 0)
 
 struct symbol {
 	uint32_t flags;
@@ -57,11 +58,6 @@ static inline void symbol_free(struct symbol *sym)
 
 	free(sym);
 	sym = NULL;
-}
-
-static inline struct token symbol_to_token(struct symbol *sym)
-{
-	return (struct token){ .attr = (uint64_t)sym, .type = TOK_IDENT };
 }
 
 struct symbol_tbl;

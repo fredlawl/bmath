@@ -1,0 +1,3 @@
+#!./bmath -e all --fmt-justify --fmt-human
+
+1+1

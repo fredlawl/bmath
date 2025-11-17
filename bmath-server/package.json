@@ -1,0 +1,12 @@
+{
+  "name": "bmath-server",
+  "private": true,
+  "scripts": {
+    "gen:lsp": "./scripts/generate-types.sh"
+  },
+  "devDependencies": {
+    "ts-json-schema-generator": "^2.5.0-next",
+    "vscode-languageserver-protocol": "^3.17.5",
+    "quicktype": "^23.2.6"
+  }
+}
