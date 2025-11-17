@@ -45,6 +45,8 @@ static const char *lookup_token_name[] = {
 struct token {
 	uint64_t attr;
 	enum token_type type;
+	size_t offset;
+	size_t len;
 };
 
 static inline const char *token_name(enum token_type tok)

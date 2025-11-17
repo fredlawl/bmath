@@ -12,8 +12,8 @@
 #include "functions.h"
 #include "lexer.h"
 #include "lookup_tables.h"
-#include "token.h"
 #include "symbol.h"
+#include "token.h"
 #include "util.h"
 
 struct lexer {
@@ -25,8 +25,10 @@ struct lexer {
 	bool liberror;
 };
 
-static struct token *NULL_TOKEN =
-	&(struct token){ .type = TOK_NULL, .attr = ATTR_NULL };
+static struct token *NULL_TOKEN = &(struct token){ .type = TOK_NULL,
+						   .attr = ATTR_NULL,
+						   .offset = 0,
+						   .len = 0 };
 
 static struct named_function {
 	const char *name;
@@ -242,6 +244,7 @@ static struct token __lexer_parse_number(struct lexer *lexer)
 	char *line_reader = (char *)lexer->line + lexer->current_column;
 	struct token tok = *NULL_TOKEN;
 
+	tok.offset = lexer->current_column;
 	while (__is_digit(*line_reader)) {
 		result = result * 10 + (*line_reader++ - '0');
 	}
@@ -250,6 +253,7 @@ static struct token __lexer_parse_number(struct lexer *lexer)
 
 	tok.attr = result;
 	tok.type = TOK_NUMBER;
+	tok.len = lexer->current_column - tok.offset;
 	return tok;
 }
 
@@ -276,6 +280,8 @@ static struct token __lexer_parse_hex(struct lexer *lexer)
 
 	tok.type = TOK_NUMBER;
 	tok.attr = result;
+	tok.offset = lexer->current_column - bytes_parsed;
+	tok.len = bytes_parsed;
 	return tok;
 }
 
@@ -286,26 +292,28 @@ static struct token __lexer_parse_octal(struct lexer *lexer)
 	// (64 / 3) + (64 % 3) = 22
 	// 22 + 1 for the leading 0
 #define MAX_OCTAL_STR 22 + 1
+	ssize_t bytes_parsed;
 	uint64_t result = 0;
 	char *start = (char *)lexer->line + lexer->current_column;
-	struct token tok = *NULL_TOKEN;
+	struct token tok;
 
-	ssize_t bytes_parsed =
-		str_octal_to_utin64(start, MAX_OCTAL_STR, &result);
+	bytes_parsed = str_octal_to_utin64(start, MAX_OCTAL_STR, &result);
 	if (bytes_parsed < 0) {
 		if (errno == E2BIG) {
 			lexer_lexical_error(lexer, "Octal exceeds 12 bytes");
-			return tok;
+			return *NULL_TOKEN;
 		}
 
 		lexer_lexical_error(lexer, "Invalid octal");
-		return tok;
+		return *NULL_TOKEN;
 	}
 
 	lexer->current_column += bytes_parsed;
 
 	tok.type = TOK_NUMBER;
 	tok.attr = result;
+	tok.offset = lexer->current_column - bytes_parsed;
+	tok.len = bytes_parsed;
 	return tok;
 }
 
@@ -318,6 +326,8 @@ static struct token __lexer_parse_ident(struct lexer *lexer)
 	bool variable = false;
 	int err;
 	char *ident;
+	struct token tok;
+	size_t offset = 0;
 	uint64_t variable_value = 0;
 
 	// account for variable definitions
@@ -334,6 +344,7 @@ static struct token __lexer_parse_ident(struct lexer *lexer)
 
 	ident_len = line_reader - start;
 	ident = line_reader - ident_len;
+	offset = lexer->current_column;
 	lexer->current_column += ident_len;
 
 	// just a $
@@ -354,7 +365,10 @@ static struct token __lexer_parse_ident(struct lexer *lexer)
 	// TODO: Fixup lookup to avoid this final comparison
 	if (sym && sym->ident_len == ident_len &&
 	    !strncmp(symbol_ident(sym), ident, ident_len)) {
-		return symbol_to_token(sym);
+		tok = symbol_to_token(sym);
+		tok.offset = offset;
+		tok.len = ident_len;
+		return tok;
 	}
 
 	if (!variable) {
@@ -376,7 +390,10 @@ static struct token __lexer_parse_ident(struct lexer *lexer)
 		return *NULL_TOKEN;
 	}
 
-	return symbol_to_token(sym);
+	tok = symbol_to_token(sym);
+	tok.offset = offset;
+	tok.len = ident_len;
+	return tok;
 }
 
 struct token lexer_next_token(struct lexer *lexer)
@@ -411,6 +428,8 @@ struct token lexer_next_token(struct lexer *lexer)
 		}
 
 		token.attr = current_character;
+		token.offset = lexer->current_column;
+		token.len = 1;
 		switch (current_character) {
 		case '\t':
 		case '\n':
@@ -453,6 +472,7 @@ struct token lexer_next_token(struct lexer *lexer)
 				token.type = TOK_SHIFT_OP;
 				token.attr = ATTR_LSHIFT;
 				lexer->current_column += 1;
+				token.len += 1;
 				goto out;
 			}
 			break;
@@ -464,6 +484,7 @@ struct token lexer_next_token(struct lexer *lexer)
 				token.type = TOK_SHIFT_OP;
 				token.attr = ATTR_RSHIFT;
 				lexer->current_column += 1;
+				token.len += 1;
 				goto out;
 			}
 			break;
